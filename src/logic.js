@@ -8,8 +8,19 @@ export const CATEGORIES = {
   veg: "Овочі",
   fruit: "Фрукти",
   grain: "Крупи та хліб",
+  frozen: "Морозилка",
   other: "Інше",
 };
+
+/** Типовий термін зберігання (днів) для нового продукту на полиці. */
+export const SHELF_LIFE = { dairy: 7, meat: 3, veg: 7, fruit: 7, grain: 14, frozen: 90, other: 30 };
+
+/** Дата `days` днів після `from` у форматі YYYY-MM-DD (за локальним часом). */
+export function addDays(days, from = new Date()) {
+  const d = new Date(from.getFullYear(), from.getMonth(), from.getDate() + days);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 /** Кількість повних днів від `today` до дати `isoDate` (YYYY-MM-DD). */
 export function daysUntil(isoDate, today = new Date()) {

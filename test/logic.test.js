@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { daysUntil, freshness, matchRecipes, sortByExpiry } from "../src/logic.js";
+import { addDays, daysUntil, freshness, matchRecipes, sortByExpiry } from "../src/logic.js";
+import { guessProduct, productEmoji } from "../src/products.js";
 
 const today = new Date(2026, 9, 25); // 25 жовтня 2026
 
@@ -37,4 +38,22 @@ test("matchRecipes ранжує за покриттям і ігнорує про
   assert.equal(result[0].coverage, 1);
   assert.equal(result[0].urgentUsed, 1);
   assert.deepEqual(result[1].missing, ["борошно", "цукор"]);
+});
+
+test("addDays рахує дату вперед", () => {
+  assert.equal(addDays(7, today), "2026-11-01");
+  assert.equal(addDays(0, today), "2026-10-25");
+});
+
+test("guessProduct розпізнає продукт і полицю", () => {
+  assert.deepEqual(guessProduct("Молоко 2.5%"), { emoji: "🥛", category: "dairy" });
+  assert.deepEqual(guessProduct("кисломолочний сир"), { emoji: "🧀", category: "dairy" });
+  assert.deepEqual(guessProduct("Салат айсберг"), { emoji: "🥬", category: "veg" });
+  assert.deepEqual(guessProduct("пельмені"), { emoji: "🥟", category: "frozen" });
+  assert.equal(guessProduct("щось невідоме"), null);
+});
+
+test("productEmoji бере емодзі полиці, якщо продукт невідомий", () => {
+  assert.equal(productEmoji({ name: "щось", category: "frozen" }), "🧊");
+  assert.equal(productEmoji({ name: "банани", category: "other" }), "🍌");
 });
