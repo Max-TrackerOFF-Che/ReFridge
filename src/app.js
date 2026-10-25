@@ -1,4 +1,5 @@
 import { CATEGORIES, SHELF_LIFE, addDays, daysUntil, freshness, fridgeMood, matchRecipes, sortByExpiry } from "./logic.js";
+import { findFreeSpot, toFraction, toPixels } from "./placement.js";
 import { guessProduct, productEmoji } from "./products.js";
 import { RECIPES } from "./recipes.js";
 import { loadItems, loadStats, saveItems, saveStats } from "./store.js";
@@ -116,7 +117,26 @@ function productTile(item) {
     el("span", { className: "label", textContent: item.name }),
   );
   tile.dataset.id = item.id;
+  if (item.pos) placeTile(tile, item.pos);
   return tile;
+}
+
+function placeTile(tile, pos) {
+  tile.style.setProperty("--x", pos.x.toFixed(4));
+  tile.style.setProperty("--y", pos.y.toFixed(4));
+}
+
+function areaOf(shelf) {
+  const box = shelf.querySelector(".shelf-items");
+  return { w: box.clientWidth, h: box.clientHeight };
+}
+
+/** Позиції (px) усіх розміщених продуктів на полиці, крім `exceptId`. */
+function occupiedOn(shelf, exceptId) {
+  const area = areaOf(shelf);
+  return items
+    .filter((i) => i.pos && i.id !== exceptId && shelfOf(i) === shelf.dataset.category)
+    .map((i) => toPixels(i.pos, area));
 }
 
 function shelfOf(item) {
@@ -150,24 +170,28 @@ function highlight(shelf) {
 document.addEventListener("pointerdown", (e) => {
   const tile = e.target.closest(".product");
   if (!tile || e.button !== 0) return;
-  drag = { tile, id: tile.dataset.id, x: e.clientX, y: e.clientY, ghost: null };
+  const r = tile.getBoundingClientRect();
+  drag = { tile, id: tile.dataset.id, x: e.clientX, y: e.clientY, dx: e.clientX - r.left, dy: e.clientY - r.top, ghost: null };
 });
 
 document.addEventListener("pointermove", (e) => {
   if (!drag) return;
   if (!drag.ghost) {
     if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 6) return;
-    drag.ghost = el("div", { className: "drag-ghost", textContent: drag.tile.querySelector(".emoji").textContent });
+    drag.ghost = drag.tile.cloneNode(true);
+    drag.ghost.classList.add("drag-ghost");
+    drag.ghost.classList.remove("dropping");
     document.body.append(drag.ghost);
     drag.tile.classList.add("dragging");
   }
-  drag.ghost.style.translate = `${e.clientX}px ${e.clientY}px`;
+  drag.ghost.style.left = `${e.clientX - drag.dx}px`;
+  drag.ghost.style.top = `${e.clientY - drag.dy}px`;
   highlight(shelfAt(e.clientX, e.clientY));
 });
 
 function endDrag(e) {
   if (!drag) return;
-  const { ghost, tile, id } = drag;
+  const { ghost, tile, id, dx, dy } = drag;
   drag = null;
   if (!ghost) return; // це був звичайний клік
   ghost.remove();
@@ -177,10 +201,15 @@ function endDrag(e) {
   setTimeout(() => (suppressClick = false), 0);
   const shelf = e.type === "pointerup" ? shelfAt(e.clientX, e.clientY) : null;
   const item = items.find((i) => i.id === id);
-  if (shelf && item && item.category !== shelf.dataset.category) {
-    item.category = shelf.dataset.category;
-    commit();
-  }
+  if (!shelf || !item) return;
+
+  // Продукт прилипає туди, де його відпустили, або на найближче вільне місце.
+  const box = shelf.querySelector(".shelf-items").getBoundingClientRect();
+  const area = areaOf(shelf);
+  const spot = findFreeSpot(area, occupiedOn(shelf, id), { x: e.clientX - dx - box.left, y: e.clientY - dy - box.top });
+  item.category = shelf.dataset.category;
+  item.pos = toFraction(spot, area);
+  commit();
 }
 document.addEventListener("pointerup", endDrag);
 document.addEventListener("pointercancel", endDrag);
@@ -312,10 +341,18 @@ for (const dialog of document.querySelectorAll("dialog")) {
 function render() {
   const sorted = sortByExpiry(items);
 
+  let placed = false;
   for (const shelf of shelves) {
     const onShelf = sorted.filter((i) => shelfOf(i) === shelf.dataset.category);
+    // Новим продуктам шукаємо перше вільне місце знизу ліворуч.
+    for (const item of onShelf.filter((i) => !i.pos)) {
+      const area = areaOf(shelf);
+      item.pos = toFraction(findFreeSpot(area, occupiedOn(shelf, item.id), { x: 0, y: area.h }, { rowFirst: true }), area);
+      placed = true;
+    }
     shelf.querySelector(".shelf-items").replaceChildren(...onShelf.map(productTile));
   }
+  if (placed) saveItems(items);
 
   const counts = { expired: 0, soon: 0, ok: 0 };
   sorted.forEach((i) => counts[freshness(i.expires)]++);

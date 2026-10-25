@@ -353,7 +353,7 @@ button:focus-visible, [role="button"]:focus-visible { outline: 3px solid var(--a
   border-radius: 38px 38px 10px 10px;
 }
 .freezer { height: 250px; }
-.main { height: 440px; border-radius: 10px 10px 24px 24px; }
+.main { height: 500px; border-radius: 10px 10px 24px 24px; }
 
 /* ---------- Інтер'єр ---------- */
 
@@ -425,56 +425,51 @@ button:focus-visible, [role="button"]:focus-visible { outline: 3px solid var(--a
   pointer-events: none;
 }
 
+/* Простір під значки: нижче за підпис полиці. Значки розміщуються вільно (--x, --y — частки 0…1). */
 .shelf-items {
-  display: flex;
-  align-items: flex-end;
-  gap: 4px;
-  width: 100%;
-  overflow-x: auto;
-  padding: 14px 2px 2px;
-  scrollbar-width: thin;
+  position: absolute;
+  inset: 16px 4px 2px;
 }
-.freezer .shelf-items { flex-wrap: wrap; align-content: flex-end; overflow: auto; max-height: 100%; }
 
-.drawers { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; flex: 1.35; min-height: 0; }
+.drawers { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; flex: 1.8; min-height: 0; }
 .drawer {
   border: 0;
   border-radius: 8px 8px 14px 14px;
   background: linear-gradient(180deg, rgba(190, 225, 245, 0.35), rgba(160, 205, 235, 0.6));
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.6);
 }
-.drawer .shelf-items { flex-wrap: wrap; overflow: auto; align-content: flex-end; max-height: 100%; }
+
 
 /* ---------- Продукти ---------- */
 
 .product {
   cursor: grab;
-  flex: none;
-  width: 54px;
+  position: absolute;
+  left: calc(var(--x, 0) * (100% - 48px));
+  top: calc(var(--y, 1) * (100% - 46px));
+  width: 48px;
+  height: 46px;
   display: flex;
   flex-direction: column;
   align-items: center;
   border-radius: 10px;
   padding: 2px 0;
-  position: relative;
   transition: transform 0.15s;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
 }
 .product.dragging { opacity: 0.3; }
-.drag-ghost {
+.product.drag-ghost {
   position: fixed;
-  left: 0;
-  top: 0;
   z-index: 100;
-  font-size: 40px;
   pointer-events: none;
-  transform: translate(-50%, -60%) rotate(-8deg);
-  filter: drop-shadow(0 8px 6px rgba(0, 0, 0, 0.35));
+  transform: rotate(-6deg) scale(1.12);
+  filter: drop-shadow(0 10px 8px rgba(0, 0, 0, 0.3));
+  transition: none;
 }
 .product:hover, .product:focus-visible { transform: translateY(-4px) scale(1.08); }
-.product .emoji { font-size: 30px; line-height: 1.1; filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.25)); }
+.product .emoji { font-size: 28px; line-height: 1.1; filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.25)); }
 .product .label {
   max-width: 100%;
   overflow: hidden;
@@ -488,7 +483,7 @@ button:focus-visible, [role="button"]:focus-visible { outline: 3px solid var(--a
   content: "";
   position: absolute;
   top: 0;
-  right: 8px;
+  right: 5px;
   width: 9px;
   height: 9px;
   border-radius: 50%;

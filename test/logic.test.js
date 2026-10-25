@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { addDays, daysUntil, freshness, fridgeMood, matchRecipes, sortByExpiry } from "../src/logic.js";
 import { guessProduct, productEmoji } from "../src/products.js";
+import { TILE, findFreeSpot, overlaps, toFraction, toPixels } from "../src/placement.js";
 
 const today = new Date(2026, 9, 25); // 25 жовтня 2026
 
@@ -75,4 +76,26 @@ test("fridgeMood: червоний, зелений і сірий стани", ()
   assert.deepEqual(r, { mood: "neutral", total: 5, expired: 0, soon: 1, nearest: 2 });
   // порожній холодильник — сірий
   assert.equal(fridgeMood([], today).mood, "neutral");
+});
+
+test("findFreeSpot: кладе туди, куди кинули, або поруч із зайнятим місцем", () => {
+  const area = { w: 300, h: 100 };
+  // вільно — лишається де кинули
+  assert.deepEqual(findFreeSpot(area, [], { x: 100, y: 20 }), { x: 100, y: 20 });
+  // за межами — притискається до краю полиці
+  assert.deepEqual(findFreeSpot(area, [], { x: 999, y: -5 }), { x: 300 - TILE.w, y: 0 });
+  // зайнято — зсувається на найближче вільне місце без перекриття
+  const occupied = [{ x: 100, y: 20 }];
+  const spot = findFreeSpot(area, occupied, { x: 105, y: 20 });
+  assert.equal(overlaps(spot, occupied[0]), false);
+  assert.ok(Math.hypot(spot.x - 105, spot.y - 20) <= TILE.w);
+  // повністю заставлена полиця — повертає бажане місце
+  const full = { w: TILE.w, h: TILE.h };
+  assert.deepEqual(findFreeSpot(full, [{ x: 0, y: 0 }], { x: 0, y: 0 }), { x: 0, y: 0 });
+});
+
+test("toFraction і toPixels взаємно обернені", () => {
+  const area = { w: 300, h: 100 };
+  const px = { x: 123, y: 25 };
+  assert.deepEqual(toPixels(toFraction(px, area), area), px);
 });
