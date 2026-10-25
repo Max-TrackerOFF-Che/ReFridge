@@ -17,11 +17,11 @@ function steps(max, step) {
 }
 
 /**
- * Найближча до `desired` вільна позиція (лівий верхній кут значка, px) у межах `area`.
- * Якщо вільного місця немає, повертає бажану позицію, обмежену межами полиці.
+ * Найближча до `desired` вільна позиція (лівий верхній кут значка, px) у межах `area`,
+ * або null, якщо полиця заставлена.
  * `rowFirst` — спершу заповнювати ряд, а вже потім підніматися вище (для нових продуктів).
  */
-export function findFreeSpot(area, occupied, desired, { tile = TILE, step = 4, rowFirst = false } = {}) {
+export function freeSpot(area, occupied, desired, { tile = TILE, step = 4, rowFirst = false } = {}) {
   const maxX = Math.max(0, area.w - tile.w);
   const maxY = Math.max(0, area.h - tile.h);
   const clamp = (v, max) => Math.min(Math.max(v, 0), max);
@@ -40,7 +40,14 @@ export function findFreeSpot(area, occupied, desired, { tile = TILE, step = 4, r
       }
     }
   }
-  return best ?? want;
+  return best;
+}
+
+/** Як freeSpot, але на заставленій полиці повертає бажану позицію (значок ляже поверх). */
+export function findFreeSpot(area, occupied, desired, opts = {}) {
+  const tile = opts.tile ?? TILE;
+  const clamp = (v, max) => Math.min(Math.max(v, 0), Math.max(0, max));
+  return freeSpot(area, occupied, desired, opts) ?? { x: clamp(desired.x, area.w - tile.w), y: clamp(desired.y, area.h - tile.h) };
 }
 
 /** Переведення між пікселями та частками (0…1), у яких позиція зберігається. */

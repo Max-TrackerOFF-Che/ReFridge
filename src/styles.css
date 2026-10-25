@@ -261,43 +261,84 @@ button:focus-visible, [role="button"]:focus-visible { outline: 3px solid var(--a
   grid-area: fridge;
   position: relative;
   z-index: 2;
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.25, 1);
 }
+
+/* Тінь і відсвіт настрою на підлозі */
+.fridge-wrap::after {
+  content: "";
+  position: absolute;
+  left: -14%;
+  right: -14%;
+  bottom: -46px;
+  height: 70px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(40, 20, 15, 0.45), transparent);
+  z-index: -1;
+  transition: background 0.6s;
+}
+.fridge-wrap:has([data-mood="sad"])::after { background: radial-gradient(closest-side, rgba(var(--glow-sad), 0.75), rgba(var(--glow-sad), 0.2) 60%, transparent); }
+.fridge-wrap:has([data-mood="happy"])::after { background: radial-gradient(closest-side, rgba(var(--glow-happy), 0.7), rgba(var(--glow-happy), 0.15) 60%, transparent); }
 
 .fridge {
+  --d: 22px; /* глибина камери в перспективі */
   position: relative;
-  padding: 10px 10px 12px;
-  border-radius: 46px 46px 30px 30px;
-  background: linear-gradient(90deg, var(--coral-dark), var(--coral) 9%, var(--coral-light) 30%, var(--coral) 70%, var(--coral-dark));
+  padding: 10px;
+  border-radius: 48px 48px 30px 30px;
+  /* Об'єм корпусу: світлий відблиск зліва, затінений правий край, блік зверху */
+  background:
+    radial-gradient(ellipse 70% 8% at 40% 0.6%, rgba(255, 255, 255, 0.55), transparent 70%),
+    linear-gradient(90deg, var(--coral-dark) 0%, var(--coral) 5%, var(--coral-light) 22%, var(--coral) 55%, var(--coral-dark) 94%, #b9513d 100%);
+  box-shadow: inset 0 -6px 10px rgba(80, 20, 10, 0.25);
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  transition: box-shadow 0.6s ease;
+  gap: 8px;
 }
 
-.fridge[data-mood="sad"] {
-  box-shadow: 0 0 0 3px rgba(var(--glow-sad), 0.9), 0 0 38px 12px rgba(var(--glow-sad), 0.65);
+/* Ореол настрою — окремим шаром, щоб не змішувати з тінями корпусу */
+.fridge::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  transition: box-shadow 0.6s ease;
+}
+.fridge[data-mood="sad"]::before {
+  box-shadow: 0 0 0 3px rgba(var(--glow-sad), 0.9), 0 0 40px 14px rgba(var(--glow-sad), 0.65);
   animation: glow-pulse 2s ease-in-out infinite;
 }
-.fridge[data-mood="happy"] {
-  box-shadow: 0 0 0 3px rgba(var(--glow-happy), 0.85), 0 0 34px 10px rgba(var(--glow-happy), 0.55);
-}
-.fridge[data-mood="neutral"] {
-  box-shadow: 0 0 46px 16px rgba(var(--glow-neutral), 0.45);
-}
-@keyframes glow-pulse { 50% { box-shadow: 0 0 0 3px rgba(var(--glow-sad), 0.7), 0 0 52px 18px rgba(var(--glow-sad), 0.8); } }
+.fridge[data-mood="happy"]::before { box-shadow: 0 0 0 3px rgba(var(--glow-happy), 0.85), 0 0 36px 12px rgba(var(--glow-happy), 0.55); }
+.fridge[data-mood="neutral"]::before { box-shadow: 0 0 46px 16px rgba(var(--glow-neutral), 0.4); }
+@keyframes glow-pulse { 50% { box-shadow: 0 0 0 3px rgba(var(--glow-sad), 0.7), 0 0 56px 20px rgba(var(--glow-sad), 0.8); } }
 
 .fridge.mood-change { animation: jiggle 0.6s ease; }
 @keyframes jiggle {
-  20% { transform: scale(1.02, 0.98); }
-  45% { transform: scale(0.99, 1.02) translateY(-6px); }
-  70% { transform: scale(1.01, 0.99); }
+  20% { scale: 1.02 0.98; }
+  45% { scale: 0.99 1.02; translate: 0 -6px; }
+  70% { scale: 1.01 0.99; }
 }
 
 .feet { display: flex; justify-content: space-between; padding: 0 30px; position: absolute; bottom: -14px; left: 0; right: 0; }
 .feet span { width: 40px; height: 14px; background: #2e2826; border-radius: 0 0 6px 6px; }
 
+/* Хромовані петлі на правому краї */
+.hinge {
+  position: absolute;
+  right: -3px;
+  width: 9px;
+  height: 22px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--chrome-1), var(--chrome-2), var(--chrome-1));
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
+  z-index: 3;
+}
+.h-top { top: 64px; }
+.h-mid { top: calc(10px + var(--main-h) - 8px); }
+.h-bottom { bottom: 40px; }
+
 /* Іскорки навколо щасливого холодильника */
-.sparkles { position: absolute; inset: -40px; pointer-events: none; }
+.sparkles { position: absolute; inset: -44px; pointer-events: none; }
 .sparkles i {
   position: absolute;
   width: 30px;
@@ -324,8 +365,8 @@ button:focus-visible, [role="button"]:focus-visible { outline: 3px solid var(--a
 /* Бульбашка з думками холодильника */
 .mood-bubble {
   position: absolute;
-  left: calc(100% + 18px);
-  top: 70px;
+  right: calc(100% + 22px);
+  top: 90px;
   width: 210px;
   margin: 0;
   padding: 12px 14px;
@@ -340,47 +381,53 @@ button:focus-visible, [role="button"]:focus-visible { outline: 3px solid var(--a
 .mood-bubble::before {
   content: "";
   position: absolute;
-  left: -10px;
+  right: -10px;
   top: 26px;
   border: 10px solid transparent;
-  border-right-color: #fffdf8;
-  border-left: 0;
+  border-left-color: #fffdf8;
+  border-right: 0;
 }
 
 .compartment {
   position: relative;
-  perspective: 1400px;
-  border-radius: 38px 38px 10px 10px;
+  perspective: 1500px;
 }
-.freezer { height: 250px; }
-.main { height: 500px; border-radius: 10px 10px 24px 24px; }
+.fridge { --main-h: 440px; }
+.main { height: var(--main-h); border-radius: 40px 40px 10px 10px; }
+.freezer { height: 330px; border-radius: 10px 10px 24px 24px; }
 
-/* ---------- Інтер'єр ---------- */
+/* ---------- Камера: ущільнювач, стінки, стеля, лампа ---------- */
 
 .interior {
   position: absolute;
   inset: 0;
   border-radius: inherit;
+  padding: 9px;
+  /* білий пластиковий обідок прорізу з легкою тінню від дверцят */
+  background: linear-gradient(180deg, #fbf7f4, #ebe3de);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08), inset 0 3px 8px rgba(0, 0, 0, 0.12);
+}
+
+.cavity {
+  position: relative;
+  height: 100%;
+  border-radius: max(4px, calc(var(--r, 30px) - 9px)) max(4px, calc(var(--r, 30px) - 9px)) 6px 6px;
   overflow: hidden;
-  padding: 14px 12px 8px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  background: #2b2522;
-  box-shadow: inset 0 0 0 4px rgba(255, 255, 255, 0.55), inset 0 6px 18px rgba(0, 0, 0, 0.35);
-  transition: background 0.35s ease 0.15s, filter 0.35s ease 0.15s;
-  filter: brightness(0.45);
-}
-.compartment.open .interior {
-  background: radial-gradient(ellipse at 50% 0%, #fffef2 0%, var(--interior-light) 45%, #e4eef6 100%);
-  filter: brightness(1);
-  animation: flicker 0.5s steps(1) 0.15s;
-}
-.freezer.open .interior {
+  padding: 20px 8px 6px;
+  gap: 2px;
+  /* задня стінка: світло від лампи згори, тінь у глибині знизу */
   background:
-    radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.9) 0 2px, transparent 3px) 0 0 / 38px 34px,
-    linear-gradient(180deg, #eaf6ff, #cfe7f8);
+    radial-gradient(ellipse 75% 40% at 50% 0%, rgba(255, 252, 230, 0.95), transparent 70%),
+    linear-gradient(180deg, #f6f4ef 0%, #e8e8e4 55%, #d9dbd8 100%);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+  transition: filter 0.35s ease 0.15s;
+  filter: brightness(0.35) saturate(0.6);
 }
+.main .cavity { --r: 40px; }
+.freezer .cavity { --r: 10px; padding-top: 16px; gap: 6px; }
+.compartment.open .cavity { filter: none; animation: flicker 0.5s steps(1) 0.15s; }
 @keyframes flicker {
   0% { filter: brightness(0.6); }
   20% { filter: brightness(1.05); }
@@ -388,64 +435,164 @@ button:focus-visible, [role="button"]:focus-visible { outline: 3px solid var(--a
   50% { filter: brightness(1); }
 }
 
+/* Бічні стінки в перспективі з ребрами-напрямними для полиць */
+.wall {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--d);
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 26px, rgba(0, 0, 0, 0.07) 26px 28px, rgba(255, 255, 255, 0.6) 28px 29px),
+    linear-gradient(90deg, #d4d4cf, #ecebe6);
+}
+.wall.left { left: 0; clip-path: polygon(0 0, 100% var(--d), 100% calc(100% - 8px), 0 100%); }
+.wall.right {
+  right: 0;
+  clip-path: polygon(0 var(--d), 100% 0, 100% 100%, 0 calc(100% - 8px));
+  background:
+    repeating-linear-gradient(180deg, transparent 0 26px, rgba(0, 0, 0, 0.07) 26px 28px, rgba(255, 255, 255, 0.6) 28px 29px),
+    linear-gradient(270deg, #cfcfca, #e9e8e3);
+}
+
 .lamp {
   position: absolute;
-  top: 4px;
+  top: 5px;
   left: 50%;
-  width: 70px;
-  height: 8px;
+  width: 46%;
+  height: 7px;
   translate: -50% 0;
-  border-radius: 0 0 8px 8px;
-  background: #b9c4cc;
+  border-radius: 0 0 6px 6px;
+  background: #c9ced2;
+  z-index: 1;
+  transition: background 0.3s, box-shadow 0.3s;
 }
-.compartment.open .lamp { background: #fffbe0; box-shadow: 0 0 30px 12px rgba(255, 248, 200, 0.75); }
+.compartment.open .lamp { background: #fffbe6; box-shadow: 0 0 22px 8px rgba(255, 246, 200, 0.85); }
+
+/* Світло настрою всередині */
+.cavity::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s;
+  z-index: 3;
+}
+.fridge[data-mood="sad"] .cavity::after {
+  background: radial-gradient(ellipse 90% 70% at 50% 0%, rgba(var(--glow-sad), 0.5), rgba(var(--glow-sad), 0.28));
+  mix-blend-mode: multiply;
+  opacity: 1;
+}
+.fridge[data-mood="sad"] .compartment.open .lamp { background: #ff9a8e; box-shadow: 0 0 26px 10px rgba(var(--glow-sad), 0.7); }
+.fridge[data-mood="happy"] .compartment.open .cavity { filter: brightness(1.05) saturate(1.1); }
+
+/* ---------- Полиці ---------- */
 
 .shelf {
   position: relative;
   flex: 1;
   min-height: 0;
-  display: flex;
-  align-items: flex-end;
-  border-bottom: 7px solid var(--glass);
-  border-radius: 2px;
-  box-shadow: 0 6px 8px -6px rgba(40, 80, 110, 0.4);
+  z-index: 2;
   transition: background 0.2s;
 }
-.shelf.drop-target { background: rgba(224, 87, 63, 0.14); outline: 2px dashed var(--accent); outline-offset: -2px; }
+.shelf.drop-target { background: rgba(224, 87, 63, 0.12); outline: 2px dashed var(--accent); outline-offset: -3px; border-radius: 6px; }
+
+/* Скляна полиця: верхня площина в перспективі + яскрава передня кромка */
+.cavity > .shelf::after {
+  content: "";
+  position: absolute;
+  left: -8px;
+  right: -8px;
+  bottom: 0;
+  height: 13px;
+  background:
+    linear-gradient(180deg, rgba(210, 236, 250, 0.45), rgba(170, 214, 240, 0.75) 75%, rgba(255, 255, 255, 0.95) 76%, rgba(150, 196, 222, 0.9));
+  clip-path: polygon(var(--d) 0, calc(100% - var(--d)) 0, 100% 72%, 100% 100%, 0 100%, 0 72%);
+  pointer-events: none;
+}
+.cavity > .shelf::before {
+  /* тінь від полиці на задню стінку під нею */
+  content: "";
+  position: absolute;
+  left: var(--d);
+  right: var(--d);
+  bottom: -10px;
+  height: 10px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.1), transparent);
+  pointer-events: none;
+}
 
 .shelf-label {
   position: absolute;
   top: 2px;
-  left: 4px;
-  font-size: 0.65rem;
+  left: calc(var(--d) - 2px);
+  font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(40, 60, 80, 0.45);
+  color: rgba(40, 60, 80, 0.42);
   pointer-events: none;
+  z-index: 1;
 }
 
 /* Простір під значки: нижче за підпис полиці. Значки розміщуються вільно (--x, --y — частки 0…1). */
 .shelf-items {
+  --tile-w: 48px;
   position: absolute;
-  inset: 16px 4px 2px;
+  inset: 15px 4px 10px;
 }
 
-.drawers { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; flex: 1.8; min-height: 0; }
+/* Прозорі шухляди (овочі, фрукти, морозилка) */
+.crisper { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; flex: 1.45; min-height: 0; padding-top: 4px; }
 .drawer {
-  border: 0;
-  border-radius: 8px 8px 14px 14px;
-  background: linear-gradient(180deg, rgba(190, 225, 245, 0.35), rgba(160, 205, 235, 0.6));
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.6);
+  border-radius: 6px 6px 10px 10px;
+  background: linear-gradient(180deg, rgba(225, 240, 250, 0.35), rgba(190, 220, 240, 0.45));
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.75), inset 0 -2px 0 2px rgba(150, 190, 215, 0.35);
 }
-
+.drawer .shelf-items { inset: 15px 4px 8px; }
+/* Передня скляна стінка шухляди — поверх продуктів, як справжній пластик */
+.drawer::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 42%;
+  border-radius: 0 0 10px 10px;
+  border-top: 2px solid rgba(255, 255, 255, 0.85);
+  background: linear-gradient(180deg, rgba(235, 247, 255, 0.35), rgba(200, 228, 245, 0.45));
+  pointer-events: none;
+  z-index: 2;
+}
+.freezer .drawer {
+  flex: 1;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.8) 0 1.5px, transparent 2px) 0 0 / 26px 22px,
+    linear-gradient(180deg, rgba(225, 240, 250, 0.4), rgba(190, 220, 240, 0.55));
+}
+.freezer .drawer::before {
+  /* ручка-виступ шухляди морозилки */
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 30%;
+  height: 6px;
+  translate: -50% 0;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  z-index: 3;
+}
 
 /* ---------- Продукти ---------- */
 
 .product {
+  --bb: rotateY(0deg); /* поворот «обличчям до глядача» для продуктів на дверцятах */
   cursor: grab;
   position: absolute;
-  left: calc(var(--x, 0) * (100% - 48px));
+  left: calc(var(--x, 0) * (100% - var(--tile-w)));
   top: calc(var(--y, 1) * (100% - 46px));
   width: 48px;
   height: 46px;
@@ -454,21 +601,24 @@ button:focus-visible, [role="button"]:focus-visible { outline: 3px solid var(--a
   align-items: center;
   border-radius: 10px;
   padding: 2px 0;
-  transition: transform 0.15s;
+  transform: var(--bb);
+  transition: translate 0.15s, scale 0.15s;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  z-index: 1;
 }
+.product:hover, .product:focus-visible { translate: 0 -4px; scale: 1.08; z-index: 4; }
 .product.dragging { opacity: 0.3; }
 .product.drag-ghost {
+  --bb: rotate(-6deg);
   position: fixed;
   z-index: 100;
   pointer-events: none;
-  transform: rotate(-6deg) scale(1.12);
+  scale: 1.12;
   filter: drop-shadow(0 10px 8px rgba(0, 0, 0, 0.3));
   transition: none;
 }
-.product:hover, .product:focus-visible { transform: translateY(-4px) scale(1.08); }
 .product .emoji { font-size: 28px; line-height: 1.1; filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.25)); }
 .product .label {
   max-width: 100%;
@@ -499,26 +649,27 @@ button:focus-visible, [role="button"]:focus-visible { outline: 3px solid var(--a
 .product.leaving { animation: leave 0.45s ease-in forwards; }
 .product.trashed { animation: trash 0.45s ease-in forwards; }
 
-@keyframes pulse { 50% { transform: scale(1.5); opacity: 0.6; } }
+@keyframes pulse { 50% { scale: 1.5; opacity: 0.6; } }
 @keyframes wobble { 0%, 100% { rotate: 0deg; } 25% { rotate: -6deg; } 75% { rotate: 6deg; } }
-@keyframes drop { from { transform: translateY(-60px); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes leave { to { transform: translateY(-40px) scale(1.4); opacity: 0; } }
-@keyframes trash { to { transform: translateY(40px) rotate(40deg) scale(0.4); opacity: 0; } }
+@keyframes drop { from { translate: 0 -60px; opacity: 0; } to { translate: 0 0; opacity: 1; } }
+@keyframes leave { to { translate: 0 -40px; scale: 1.4; opacity: 0; } }
+@keyframes trash { to { translate: 0 40px; rotate: 40deg; scale: 0.4; opacity: 0; } }
 
 /* ---------- Дверцята (петлі праворуч, ручка ліворуч, як на ретро-моделях) ---------- */
 
 .door {
+  --open: 117deg;
   position: absolute;
   inset: 0;
   border-radius: inherit;
   transform-origin: right center;
   transform-style: preserve-3d;
-  transition: transform 0.75s cubic-bezier(0.2, 0.8, 0.25, 1);
+  transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.25, 1);
   cursor: pointer;
   outline: none;
-  z-index: 2;
+  z-index: 4;
 }
-.compartment.open .door { transform: rotateY(108deg); }
+.compartment.open .door { transform: rotateY(var(--open)); }
 .door:focus-visible .door-front { box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--accent); }
 
 .door-face {
@@ -529,16 +680,65 @@ button:focus-visible, [role="button"]:focus-visible { outline: 3px solid var(--a
 }
 .door-front {
   background:
-    radial-gradient(ellipse 60% 30% at 30% 8%, rgba(255, 255, 255, 0.35), transparent 70%),
-    linear-gradient(95deg, var(--coral-dark) 0%, var(--coral) 8%, var(--coral-light) 32%, var(--coral) 70%, var(--coral-dark) 100%);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08), inset 0 -4px 0 rgba(0, 0, 0, 0.06);
+    radial-gradient(ellipse 60% 26% at 30% 6%, rgba(255, 255, 255, 0.38), transparent 70%),
+    linear-gradient(95deg, var(--coral-dark) 0%, var(--coral) 6%, var(--coral-light) 28%, var(--coral) 66%, var(--coral-dark) 96%, #c25a45 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.08),
+    inset 0 2px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -5px 8px rgba(90, 25, 10, 0.18),
+    0 3px 5px rgba(90, 25, 10, 0.18);
   overflow: hidden;
 }
+
+/* Внутрішній бік дверцят: кораловий обідок, сірий ущільнювач і білий пластик з балконами */
 .door-back {
-  transform: rotateY(180deg);
-  background: linear-gradient(90deg, #f3ece6, #e2d8d0);
-  box-shadow: inset 0 0 0 7px var(--coral);
+  transform: rotateY(180deg) translateZ(1px);
+  transform-style: preserve-3d;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 30px 24px 26px;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.06), transparent 18%, transparent 82%, rgba(0, 0, 0, 0.06)),
+    linear-gradient(180deg, #fbf8f5, #ece5df);
+  box-shadow:
+    inset 0 0 0 9px var(--coral),
+    inset 0 0 0 13px #d9d2cc,
+    inset 0 0 0 15px #f6f2ee,
+    inset 0 0 22px 16px rgba(0, 0, 0, 0.08);
 }
+.liner-ribs {
+  position: absolute;
+  inset: 30px 26px;
+  border-radius: 8px;
+  background: repeating-linear-gradient(180deg, transparent 0 34px, rgba(0, 0, 0, 0.06) 34px 36px, rgba(255, 255, 255, 0.8) 36px 37px);
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Балкон на дверцятах: прозора полиця з бортиком */
+.balcony {
+  transform-style: preserve-3d;
+  border-bottom: 0;
+}
+.balcony .shelf-items { --tile-w: 100px; inset: 12px 4px 12px; transform-style: preserve-3d; }
+.balcony .shelf-label { left: 6px; }
+.balcony::after {
+  content: "";
+  position: absolute;
+  left: -6px;
+  right: -6px;
+  bottom: 0;
+  height: 26px;
+  border-radius: 3px 3px 6px 6px;
+  border-top: 2px solid rgba(255, 255, 255, 0.95);
+  background: linear-gradient(180deg, rgba(220, 238, 250, 0.4), rgba(180, 215, 238, 0.55));
+  box-shadow: 0 4px 6px -3px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  z-index: 2;
+}
+.door-back .product { backface-visibility: hidden; }
+/* Відриваємо від площини дверцят і повертаємо до глядача, як пляшки на балконі */
+.compartment.open .door-back .product { --bb: translateZ(28px) rotateY(calc(180deg - var(--open))); }
 
 .vents {
   position: absolute;
@@ -553,17 +753,17 @@ button:focus-visible, [role="button"]:focus-visible { outline: 3px solid var(--a
   height: 6px;
   border-radius: 3px;
   background: linear-gradient(180deg, var(--chrome-2), var(--chrome-1));
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.25), inset 0 -1px 0 rgba(0, 0, 0, 0.1);
 }
 
 .handle {
   position: absolute;
-  border-radius: 6px;
+  border-radius: 7px;
   background: linear-gradient(180deg, var(--chrome-2), var(--chrome-1) 70%, #8e989f);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 5px 7px rgba(60, 20, 10, 0.35), inset 0 1px 0 #fff;
 }
-.handle.top { left: 22px; bottom: 26px; width: 96px; height: 13px; }
-.handle.bottom { left: 22px; top: 18px; width: 60px; height: 11px; }
+.handle.top { left: 22px; bottom: 30px; width: 96px; height: 14px; }
+.handle.bottom { left: 22px; top: 18px; width: 64px; height: 12px; }
 
 .hint {
   position: absolute;
@@ -578,14 +778,14 @@ button:focus-visible, [role="button"]:focus-visible { outline: 3px solid var(--a
   transition: opacity 0.2s;
 }
 .door:hover .hint { opacity: 1; }
-.freezer .hint { bottom: 6px; }
+.main .hint { bottom: 8px; }
 
 /* ---------- Обличчя ---------- */
 
 .face {
   position: absolute;
   left: 50%;
-  top: 56px;
+  top: 70px;
   width: 78%;
   translate: -50% 0;
   overflow: visible;
@@ -759,6 +959,7 @@ input, select {
   .mood-bubble {
     position: relative;
     left: auto;
+    right: auto;
     top: auto;
     width: auto;
     margin: 0 0 18px;
@@ -766,6 +967,7 @@ input, select {
   }
   .mood-bubble::before {
     left: 50%;
+    right: auto;
     top: auto;
     bottom: -10px;
     translate: -50% 0;
@@ -773,6 +975,8 @@ input, select {
     border-top-color: #fffdf8;
     border-bottom: 0;
   }
+  /* Відчинені дверцята виходять праворуч — зсуваємо холодильник, щоб їх було видно. */
+  .fridge-wrap:has(.compartment.open) { transform: translateX(-19%) scale(0.8); transform-origin: 50% 0; }
 }
 @media (max-width: 560px) {
   .kitchen { column-gap: 12px; }
@@ -786,10 +990,4 @@ input, select {
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
-}
-
-/* На широкому екрані відчинені дверцята заходять під бульбашку — ховаємо її. */
-@media (min-width: 861px) {
-  .mood-bubble { transition: opacity 0.3s; }
-  .fridge-wrap:has(.compartment.open) .mood-bubble { opacity: 0; pointer-events: none; }
 }

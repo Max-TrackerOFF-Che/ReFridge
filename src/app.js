@@ -1,5 +1,5 @@
 import { CATEGORIES, SHELF_LIFE, addDays, daysUntil, freshness, fridgeMood, matchRecipes, sortByExpiry } from "./logic.js";
-import { findFreeSpot, toFraction, toPixels } from "./placement.js";
+import { TILE, findFreeSpot, freeSpot, toFraction, toPixels } from "./placement.js";
 import { guessProduct, productEmoji } from "./products.js";
 import { RECIPES } from "./recipes.js";
 import { loadItems, loadStats, saveItems, saveStats } from "./store.js";
@@ -72,6 +72,7 @@ function setOpen(compartment, open) {
   compartment.querySelector(".door").setAttribute("aria-expanded", String(open));
   // За зачиненими дверцятами продукти недоступні ні мишею, ні з клавіатури.
   compartment.querySelector(".interior").inert = !open;
+  compartment.querySelector(".door-back").inert = !open;
 }
 
 for (const compartment of document.querySelectorAll(".compartment")) {
@@ -92,7 +93,9 @@ document.addEventListener("keydown", (e) => {
 for (const door of document.querySelectorAll(".door")) {
   const compartment = door.closest(".compartment");
   const toggle = () => setOpen(compartment, !compartment.classList.contains("open"));
-  door.addEventListener("click", toggle);
+  door.addEventListener("click", (e) => {
+    if (!e.target.closest(".product")) toggle();
+  });
   door.addEventListener("keydown", (e) => {
     if (e.target === door && (e.key === "Enter" || e.key === " ")) {
       e.preventDefault();
@@ -131,16 +134,57 @@ function areaOf(shelf) {
   return { w: box.clientWidth, h: box.clientHeight };
 }
 
+// На дверцятах продукти повернуті до глядача, тож їм потрібно більше місця вздовж полиці.
+function tileOf(shelf) {
+  return shelf.classList.contains("balcony") ? { w: 100, h: TILE.h } : TILE;
+}
+
 /** Позиції (px) усіх розміщених продуктів на полиці, крім `exceptId`. */
 function occupiedOn(shelf, exceptId) {
   const area = areaOf(shelf);
+  const tile = tileOf(shelf);
   return items
-    .filter((i) => i.pos && i.id !== exceptId && shelfOf(i) === shelf.dataset.category)
-    .map((i) => toPixels(i.pos, area));
+    .filter((i) => i.pos && i.id !== exceptId && shelfOf(i) === shelf.dataset.shelf)
+    .map((i) => toPixels(i.pos, area, tile));
 }
 
+// Полиця за замовчуванням для кожної категорії (соуси й напої — на дверцятах).
+const DEFAULT_SHELF = {
+  dairy: "dairy",
+  meat: "meat",
+  grain: "grain",
+  veg: "veg",
+  fruit: "fruit",
+  other: "door-1",
+  frozen: "freezer-1",
+};
+const shelfById = (id) => shelves.find((s) => s.dataset.shelf === id);
+
+/** Id полиці, на якій лежить продукт. */
 function shelfOf(item) {
-  return CATEGORIES[item.category] ? item.category : "other";
+  if (item.shelf && shelfById(item.shelf)) return item.shelf;
+  return DEFAULT_SHELF[item.category] ?? DEFAULT_SHELF.other;
+}
+
+/** Ставить новий продукт на першу полицю його категорії, де є вільне місце. */
+function autoPlace(item) {
+  const category = CATEGORIES[item.category] ? item.category : "other";
+  const preferred = shelfById(shelfOf(item));
+  const candidates = [preferred, ...shelves.filter((s) => s.dataset.category === category && s !== preferred)];
+  for (const shelf of candidates) {
+    const area = areaOf(shelf);
+    const tile = tileOf(shelf);
+    const spot = freeSpot(area, occupiedOn(shelf, item.id), { x: 0, y: area.h }, { tile, rowFirst: true });
+    if (spot) {
+      item.shelf = shelf.dataset.shelf;
+      item.pos = toFraction(spot, area, tile);
+      return;
+    }
+  }
+  // Усе заставлено — кладемо поверх на основну полицю.
+  const area = areaOf(preferred);
+  item.shelf = preferred.dataset.shelf;
+  item.pos = toFraction(findFreeSpot(area, [], { x: 0, y: area.h }, { tile: tileOf(preferred) }), area, tileOf(preferred));
 }
 
 document.addEventListener("click", (e) => {
@@ -191,7 +235,7 @@ document.addEventListener("pointermove", (e) => {
 
 function endDrag(e) {
   if (!drag) return;
-  const { ghost, tile, id, dx, dy } = drag;
+  const { ghost, tile, id, dy } = drag;
   drag = null;
   if (!ghost) return; // це був звичайний клік
   ghost.remove();
@@ -204,11 +248,18 @@ function endDrag(e) {
   if (!shelf || !item) return;
 
   // Продукт прилипає туди, де його відпустили, або на найближче вільне місце.
+  // Масштаб враховує полиці на дверцятах, які в перспективі виглядають вужчими.
   const box = shelf.querySelector(".shelf-items").getBoundingClientRect();
   const area = areaOf(shelf);
-  const spot = findFreeSpot(area, occupiedOn(shelf, id), { x: e.clientX - dx - box.left, y: e.clientY - dy - box.top });
+  const size = tileOf(shelf);
+  const desired = {
+    x: ((e.clientX - box.left) / box.width) * area.w - size.w / 2,
+    y: ((e.clientY - dy - box.top) / box.height) * area.h,
+  };
+  const spot = findFreeSpot(area, occupiedOn(shelf, id), desired, { tile: size });
   item.category = shelf.dataset.category;
-  item.pos = toFraction(spot, area);
+  item.shelf = shelf.dataset.shelf;
+  item.pos = toFraction(spot, area, size);
   commit();
 }
 document.addEventListener("pointerup", endDrag);
@@ -235,7 +286,7 @@ function openItem(id) {
   const status = freshness(item.expires);
   $("#item-emoji").textContent = productEmoji(item);
   $("#item-name").textContent = item.name;
-  $("#item-meta").textContent = [CATEGORIES[shelfOf(item)], item.quantity].filter(Boolean).join(" · ");
+  $("#item-meta").textContent = [CATEGORIES[item.category] ?? CATEGORIES.other, item.quantity].filter(Boolean).join(" · ");
   const expiry = $("#item-expiry");
   expiry.textContent = `Придатний до ${item.expires.split("-").reverse().join(".")} — ${expiryLabel(item.expires)}`;
   expiry.className = `expiry ${status}`;
@@ -341,18 +392,15 @@ for (const dialog of document.querySelectorAll("dialog")) {
 function render() {
   const sorted = sortByExpiry(items);
 
-  let placed = false;
+  // Новим продуктам (і тим, що збереглися зі старої версії) шукаємо вільне місце.
+  const unplaced = sorted.filter((i) => !i.pos || !i.shelf || !shelfById(i.shelf));
+  unplaced.forEach(autoPlace);
+  if (unplaced.length) saveItems(items);
+
   for (const shelf of shelves) {
-    const onShelf = sorted.filter((i) => shelfOf(i) === shelf.dataset.category);
-    // Новим продуктам шукаємо перше вільне місце знизу ліворуч.
-    for (const item of onShelf.filter((i) => !i.pos)) {
-      const area = areaOf(shelf);
-      item.pos = toFraction(findFreeSpot(area, occupiedOn(shelf, item.id), { x: 0, y: area.h }, { rowFirst: true }), area);
-      placed = true;
-    }
+    const onShelf = sorted.filter((i) => shelfOf(i) === shelf.dataset.shelf);
     shelf.querySelector(".shelf-items").replaceChildren(...onShelf.map(productTile));
   }
-  if (placed) saveItems(items);
 
   const counts = { expired: 0, soon: 0, ok: 0 };
   sorted.forEach((i) => counts[freshness(i.expires)]++);
