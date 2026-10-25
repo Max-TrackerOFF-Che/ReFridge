@@ -2,7 +2,7 @@ import { CATEGORIES, SHELF_LIFE, addDays, daysUntil, freshness, fridgeMood, matc
 import { findFreeSpot, freeSpot, toFraction, toPixels } from "./placement.js";
 import { guessProduct, productEmoji } from "./products.js";
 import { RECIPES } from "./recipes.js";
-import { TILE_FRACTION, ZONES } from "./scene.js";
+import { DOORS, TILE_FRACTION, ZONES } from "./scene.js";
 import { loadItems, loadStats, saveItems, saveStats } from "./store.js";
 
 // Під час першого візиту кладемо кілька продуктів-прикладів, щоб було з чим погратися.
@@ -67,8 +67,19 @@ function commit() {
 
 const isOpen = () => scene.dataset.state === "open";
 
+let animTimer = null;
+
 function setOpen(open) {
+  const changed = isOpen() !== open;
   scene.dataset.state = open ? "open" : "closed";
+  // Дверцята повертаються на петлях; класи прибираємо, коли анімація скінчилась.
+  if (changed) {
+    clearTimeout(animTimer);
+    scene.classList.remove("anim-open", "anim-close");
+    void scene.offsetWidth; // перезапуск анімації, якщо клікнули посеред попередньої
+    scene.classList.add(open ? "anim-open" : "anim-close");
+    animTimer = setTimeout(() => scene.classList.remove("anim-open", "anim-close"), 1200);
+  }
   // Коли холодильник зачинений, продукти недоступні ні мишею, ні з клавіатури.
   $("#open-ui").inert = !open;
   $(".closed-ui").inert = open;
@@ -98,7 +109,18 @@ function layoutShelves() {
 }
 
 function updateBackdrop() {
-  const photo = scene.querySelector(`.photo[data-for="${scene.dataset.state} ${scene.dataset.mood}"]`);
+  const mood = scene.dataset.mood;
+  for (const photo of scene.querySelectorAll(".photo")) {
+    photo.classList.toggle("cur-closed", photo.dataset.for === `closed ${mood}`);
+    photo.classList.toggle("cur-open", photo.dataset.for === `open ${mood}`);
+  }
+  // Дверцята для анімації вирізаються з фото зачиненого холодильника в поточному настрої.
+  const door = DOORS[mood] ?? DOORS.neutral;
+  // Повна адреса: відносний шлях у CSS-змінній рахувався б від styles.css.
+  scene.style.setProperty("--closed-photo", `url("${scene.querySelector(".photo.cur-closed").src}")`);
+  for (const [key, value] of Object.entries(door)) scene.style.setProperty(`--door-${key}`, value);
+
+  const photo = scene.querySelector(`.photo[data-for="${scene.dataset.state} ${mood}"]`);
   if (photo) $("#backdrop").style.backgroundImage = `url("${photo.getAttribute("src")}")`;
 }
 

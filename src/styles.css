@@ -123,12 +123,114 @@ button:focus-visible, [role="button"]:focus-visible { outline: 3px solid var(--a
   transition: opacity 0.45s ease;
   pointer-events: none;
 }
-.scene[data-state="closed"][data-mood="sad"] .photo[data-for="closed sad"],
-.scene[data-state="closed"][data-mood="happy"] .photo[data-for="closed happy"],
-.scene[data-state="closed"][data-mood="neutral"] .photo[data-for="closed neutral"],
-.scene[data-state="open"][data-mood="sad"] .photo[data-for="open sad"],
-.scene[data-state="open"][data-mood="happy"] .photo[data-for="open happy"],
-.scene[data-state="open"][data-mood="neutral"] .photo[data-for="open neutral"] { opacity: 1; }
+/* cur-closed / cur-open — фото поточного настрою (ставить JS) */
+.scene[data-state="closed"] .photo.cur-closed,
+.scene[data-state="open"] .photo.cur-open { opacity: 1; }
+
+/* ---------- Анімація відчинення й зачинення ----------
+   Дверцята вирізані з фото зачиненого холодильника й повертаються навколо петель праворуч,
+   а під ними проступає фото відчиненого холодильника, де поступово вмикається світло. */
+
+.swing { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.leaf {
+  position: absolute;
+  left: calc(var(--door-x) * 1%);
+  width: calc(var(--door-w) * 1%);
+  background-image: var(--closed-photo);
+  background-repeat: no-repeat;
+  /* 1% ширини сцени = 1cqw, 1% висоти = 1619/971 cqw */
+  background-size: 100cqw calc(100cqw * 1619 / 971);
+  transform-origin: right center;
+  backface-visibility: hidden;
+  opacity: 0;
+}
+.leaf::after {
+  /* тінь, що густішає, коли дверцята розвертаються від світла */
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(40, 10, 0, 0.55), rgba(40, 10, 0, 0.15));
+  opacity: var(--shade, 0);
+}
+.leaf-top {
+  top: calc(var(--door-top) * 1%);
+  height: calc((var(--door-mid) - var(--door-top)) * 1%);
+  background-position: calc(var(--door-x) * -1cqw) calc(var(--door-top) * -1cqw * 1619 / 971);
+  border-radius: 9cqw 9cqw 1cqw 1cqw;
+}
+.leaf-bottom {
+  top: calc(var(--door-mid) * 1%);
+  height: calc((var(--door-bottom) - var(--door-mid)) * 1%);
+  background-position: calc(var(--door-x) * -1cqw) calc(var(--door-mid) * -1cqw * 1619 / 971);
+  border-radius: 1cqw 1cqw 5cqw 5cqw;
+}
+
+/* Праворуч від холодильника на фото відчиненого намальовані відчинені дверцята.
+   Поки наші дверцята повертаються, прикриваємо цю ділянку шматком фото зачиненого. */
+.veil {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc((var(--door-x) + var(--door-w)) * 1%);
+  right: 0;
+  background-image: var(--closed-photo);
+  background-repeat: no-repeat;
+  background-size: 100cqw calc(100cqw * 1619 / 971);
+  background-position: calc((var(--door-x) + var(--door-w)) * -1cqw) 0;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 4cqw);
+  mask-image: linear-gradient(90deg, transparent, #000 4cqw);
+  opacity: 0;
+}
+
+.scene.anim-open .photo, .scene.anim-close .photo { transition: none; }
+/* Під час анімації фото зачиненого — поверх відчиненого, щоб згасати чи проявлятися над ним */
+.scene.anim-open .photo.cur-closed, .scene.anim-close .photo.cur-closed { z-index: 1; }
+.scene.anim-open .closed-ui { animation: fade-out 0.2s ease-out both; }
+.scene.anim-close .closed-ui { animation: fade-in 0.3s ease-out 0.65s both; }
+.scene.anim-open .veil { animation: veil-out 0.95s ease-in-out both; }
+.scene.anim-close .veil { animation: veil-in 0.8s ease-in-out both; }
+@keyframes veil-out { 0%, 45% { opacity: 1; } 85%, 100% { opacity: 0; } }
+@keyframes veil-in { 0%, 15% { opacity: 0; } 50%, 100% { opacity: 1; } }
+
+.scene.anim-open .photo.cur-closed { animation: fade-out 0.3s ease-out both; }
+.scene.anim-open .photo.cur-open { opacity: 1; animation: lamp-on 1s ease-out both; }
+.scene.anim-open .leaf { animation: door-open 0.95s cubic-bezier(0.45, 0.05, 0.3, 1) both; }
+.scene.anim-open .leaf-bottom { animation-delay: 0.08s; }
+.scene.anim-open .open-ui { animation: fade-in 0.35s ease-out 0.75s both; }
+
+.scene.anim-close .photo.cur-open { opacity: 1; animation: lamp-off 0.8s ease-in both; }
+.scene.anim-close .photo.cur-closed { animation: fade-in 0.2s ease-in 0.62s both; }
+.scene.anim-close .leaf { animation: door-close 0.8s cubic-bezier(0.5, 0, 0.6, 1) both; }
+.scene.anim-close .leaf-bottom { animation-delay: 0.06s; }
+.scene.anim-close .open-ui { opacity: 0; transition: none; }
+
+@keyframes door-open {
+  0% { opacity: 1; transform: perspective(1400px) rotateY(0deg); --shade: 0; }
+  55% { opacity: 1; --shade: 0.5; }
+  100% { opacity: 0; transform: perspective(1400px) rotateY(100deg); --shade: 0.9; }
+}
+@keyframes door-close {
+  0% { opacity: 0; transform: perspective(1400px) rotateY(100deg); --shade: 0.9; }
+  40% { opacity: 1; --shade: 0.5; }
+  92% { transform: perspective(1400px) rotateY(-2deg); }
+  100% { opacity: 1; transform: perspective(1400px) rotateY(0deg); --shade: 0; }
+}
+@keyframes lamp-on {
+  0% { filter: brightness(0.45) saturate(0.8); }
+  45% { filter: brightness(0.6) saturate(0.85); }
+  55% { filter: brightness(1.12); }
+  62% { filter: brightness(0.85); }
+  100% { filter: brightness(1); }
+}
+@keyframes lamp-off {
+  0% { filter: brightness(1); }
+  100% { filter: brightness(0.45) saturate(0.8); }
+}
+@keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+@property --shade { syntax: "<number>"; inherits: true; initial-value: 0; }
 
 /* Червоний стан — підсвітка дихає */
 .scene[data-mood="sad"]::after {
