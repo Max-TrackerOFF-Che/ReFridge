@@ -569,6 +569,18 @@ input, select {
 }
 .badge.soon { background: var(--soon); }
 
+/* ---------- Встановлений застосунок (на головному екрані телефона) ---------- */
+
+body { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+@media (display-mode: standalone) {
+  .intro p { display: none; }
+  .intro { padding-top: 10px; }
+  .intro h1 { font-size: 1.5rem; }
+  .actions-bar .small { display: none; }
+  .actions-bar { padding-block: 12px 18px; }
+  .scene { width: min(calc(100vw - 32px), 540px, calc((100svh - 200px) * 971 / 1619)); }
+}
+
 /* ---------- Вузькі екрани ---------- */
 
 @media (max-width: 1000px) {

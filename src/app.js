@@ -525,3 +525,8 @@ setInterval(render, 60_000);
 
 setOpen(false);
 render();
+
+// Офлайн-режим і встановлення на телефон. У пісочницях (наприклад, у превʼю) реєстрація може бути заборонена — тоді просто працюємо без неї.
+if ("serviceWorker" in navigator && location.protocol !== "file:") {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
