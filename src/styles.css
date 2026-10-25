@@ -1,112 +1,604 @@
+/* ReFridge: сцена — фото ретро-кухні з холодильником (зачиненим чи відчиненим, у потрібному настрої),
+   а продукти, магніти й стікер лежать поверх фото інтерактивними шарами. */
 :root {
-  --bg: #f4f8fb;
-  --card: #ffffff;
-  --text: #1c2a36;
-  --muted: #6b7c8a;
-  --accent: #2b8fd6;
+  --page: #efe7d8;
+  --ink: #3d2b25;
+  --ink-soft: #7b665d;
+
   --ok: #3aa76d;
   --soon: #e3a21a;
   --expired: #d64545;
-  --border: #dde6ee;
+
+  --surface: #fffaf3;
+  --text: #2f2420;
+  --muted: #7b665d;
+  --accent: #e0573f;
+  --border: #e8dccd;
+  --field: #f6efe4;
+
+  --font-display: "Fredoka", "Nunito", system-ui, sans-serif;
+  --font-body: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f1820;
-    --card: #17232e;
-    --text: #e3edf5;
-    --muted: #8ea2b3;
-    --border: #26394a;
+  :root:not([data-theme="light"]) {
+    --page: #241f1d;
+    --ink: #f3e8de;
+    --ink-soft: #c4b4a8;
+    --surface: #2a2422;
+    --text: #f3e8de;
+    --muted: #c4b4a8;
+    --border: #4a3f3a;
+    --field: #352d2a;
+    color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+  --page: #241f1d;
+  --ink: #f3e8de;
+  --ink-soft: #c4b4a8;
+  --surface: #2a2422;
+  --text: #f3e8de;
+  --muted: #c4b4a8;
+  --border: #4a3f3a;
+  --field: #352d2a;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
+html, body { overflow-x: clip; }
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  background: var(--bg);
-  color: var(--text);
+  min-height: 100vh;
+  font-family: var(--font-body);
+  background: var(--page);
+  color: var(--ink);
 }
 
-header, main {
-  max-width: 760px;
-  margin: 0 auto;
-  padding: 16px;
-}
-
-h1 { margin: 8px 0 0; }
-h2 { margin-top: 0; font-size: 1.1rem; }
-
+h1, h2 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; }
 .muted { color: var(--muted); }
-.small { font-size: 0.85rem; margin-top: 4px; }
-
-.stats { display: flex; flex-wrap: wrap; gap: 8px; }
-.stat {
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  font-size: 0.85rem;
-}
-.stat.soon { border-color: var(--soon); }
-.stat.expired { border-color: var(--expired); }
-
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 16px;
-}
-
-.add-form {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 8px;
-}
-
-input, select, button {
-  font: inherit;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-}
+.small { font-size: 0.85rem; }
 
 button {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
+  font: inherit;
+  font-weight: 700;
   cursor: pointer;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  border-radius: 12px;
+  padding: 9px 14px;
+}
+button.secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
+button.danger { background: var(--expired); border-color: var(--expired); }
+button:focus-visible, [role="button"]:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Розмите фото кухні на весь екран */
+.backdrop {
+  position: fixed;
+  inset: -40px;
+  z-index: -1;
+  background: var(--page) center / cover no-repeat;
+  filter: blur(28px) saturate(1.1);
+  opacity: 0.55;
+  transition: background-image 0.4s;
 }
 
-.list { list-style: none; margin: 0; padding: 0; }
+.intro { text-align: center; padding: 18px 16px 6px; }
+.intro h1 { margin: 0; font-size: 2rem; letter-spacing: 0.02em; color: var(--accent); }
+.intro p { margin: 4px auto 0; max-width: 46ch; color: var(--ink-soft); }
 
-.item, .recipe {
+/* ---------- Сцена ---------- */
+
+.stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+  padding: 8px 16px 0;
+}
+
+.scene {
+  grid-column: 2;
+  position: relative;
+  width: min(calc(100vw - 32px), 540px, calc((100svh - 40px) * 971 / 1619));
+  min-width: min(calc(100vw - 32px), 320px);
+  aspect-ratio: 971 / 1619;
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: 0 30px 60px -30px rgba(40, 20, 10, 0.55);
+  container-type: inline-size;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  pointer-events: none;
+}
+/* cur-closed / cur-open — фото поточного настрою (ставить JS) */
+.scene[data-state="closed"] .photo.cur-closed,
+.scene[data-state="open"] .photo.cur-open { opacity: 1; }
+
+/* ---------- Анімація відчинення й зачинення ----------
+   Дверцята вирізані з фото зачиненого холодильника й повертаються навколо петель праворуч,
+   а під ними проступає фото відчиненого холодильника, де поступово вмикається світло. */
+
+.swing { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.leaf {
+  position: absolute;
+  left: calc(var(--door-x) * 1%);
+  width: calc(var(--door-w) * 1%);
+  background-image: var(--closed-photo);
+  background-repeat: no-repeat;
+  /* 1% ширини сцени = 1cqw, 1% висоти = 1619/971 cqw */
+  background-size: 100cqw calc(100cqw * 1619 / 971);
+  transform-origin: right center;
+  backface-visibility: hidden;
+  opacity: 0;
+}
+.leaf::after {
+  /* тінь, що густішає, коли дверцята розвертаються від світла */
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(40, 10, 0, 0.55), rgba(40, 10, 0, 0.15));
+  opacity: var(--shade, 0);
+}
+.leaf-top {
+  top: calc(var(--door-top) * 1%);
+  height: calc((var(--door-mid) - var(--door-top)) * 1%);
+  background-position: calc(var(--door-x) * -1cqw) calc(var(--door-top) * -1cqw * 1619 / 971);
+  border-radius: 9cqw 9cqw 1cqw 1cqw;
+}
+.leaf-bottom {
+  top: calc(var(--door-mid) * 1%);
+  height: calc((var(--door-bottom) - var(--door-mid)) * 1%);
+  background-position: calc(var(--door-x) * -1cqw) calc(var(--door-mid) * -1cqw * 1619 / 971);
+  border-radius: 1cqw 1cqw 5cqw 5cqw;
+}
+
+/* Праворуч від холодильника на фото відчиненого намальовані відчинені дверцята.
+   Поки наші дверцята повертаються, прикриваємо цю ділянку шматком фото зачиненого. */
+.veil {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc((var(--door-x) + var(--door-w)) * 1%);
+  right: 0;
+  background-image: var(--closed-photo);
+  background-repeat: no-repeat;
+  background-size: 100cqw calc(100cqw * 1619 / 971);
+  background-position: calc((var(--door-x) + var(--door-w)) * -1cqw) 0;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 4cqw);
+  mask-image: linear-gradient(90deg, transparent, #000 4cqw);
+  opacity: 0;
+}
+
+.scene.anim-open .photo, .scene.anim-close .photo { transition: none; }
+/* Під час анімації фото зачиненого — поверх відчиненого, щоб згасати чи проявлятися над ним */
+.scene.anim-open .photo.cur-closed, .scene.anim-close .photo.cur-closed { z-index: 1; }
+.scene.anim-open .closed-ui { animation: fade-out 0.2s ease-out both; }
+.scene.anim-close .closed-ui { animation: fade-in 0.3s ease-out 0.65s both; }
+.scene.anim-open .veil { animation: veil-out 0.95s ease-in-out both; }
+.scene.anim-close .veil { animation: veil-in 0.8s ease-in-out both; }
+@keyframes veil-out { 0%, 45% { opacity: 1; } 85%, 100% { opacity: 0; } }
+@keyframes veil-in { 0%, 15% { opacity: 0; } 50%, 100% { opacity: 1; } }
+
+.scene.anim-open .photo.cur-closed { animation: fade-out 0.3s ease-out both; }
+.scene.anim-open .photo.cur-open { opacity: 1; animation: lamp-on 1s ease-out both; }
+.scene.anim-open .leaf { animation: door-open 0.95s cubic-bezier(0.45, 0.05, 0.3, 1) both; }
+.scene.anim-open .leaf-bottom { animation-delay: 0.08s; }
+.scene.anim-open .open-ui { animation: fade-in 0.35s ease-out 0.75s both; }
+
+.scene.anim-close .photo.cur-open { opacity: 1; animation: lamp-off 0.8s ease-in both; }
+.scene.anim-close .photo.cur-closed { animation: fade-in 0.2s ease-in 0.62s both; }
+.scene.anim-close .leaf { animation: door-close 0.8s cubic-bezier(0.5, 0, 0.6, 1) both; }
+.scene.anim-close .leaf-bottom { animation-delay: 0.06s; }
+.scene.anim-close .open-ui { opacity: 0; transition: none; }
+
+@keyframes door-open {
+  0% { opacity: 1; transform: perspective(1400px) rotateY(0deg); --shade: 0; }
+  55% { opacity: 1; --shade: 0.5; }
+  100% { opacity: 0; transform: perspective(1400px) rotateY(100deg); --shade: 0.9; }
+}
+@keyframes door-close {
+  0% { opacity: 0; transform: perspective(1400px) rotateY(100deg); --shade: 0.9; }
+  40% { opacity: 1; --shade: 0.5; }
+  92% { transform: perspective(1400px) rotateY(-2deg); }
+  100% { opacity: 1; transform: perspective(1400px) rotateY(0deg); --shade: 0; }
+}
+@keyframes lamp-on {
+  0% { filter: brightness(0.45) saturate(0.8); }
+  45% { filter: brightness(0.6) saturate(0.85); }
+  55% { filter: brightness(1.12); }
+  62% { filter: brightness(0.85); }
+  100% { filter: brightness(1); }
+}
+@keyframes lamp-off {
+  0% { filter: brightness(1); }
+  100% { filter: brightness(0.45) saturate(0.8); }
+}
+@keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+@property --shade { syntax: "<number>"; inherits: true; initial-value: 0; }
+
+/* Червоний стан — підсвітка дихає */
+.scene[data-mood="sad"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 45% 40% at 50% 50%, rgba(255, 40, 40, 0.18), transparent 70%);
+  animation: breathe 2.2s ease-in-out infinite;
+}
+@keyframes breathe { 50% { opacity: 0; } }
+
+.closed-ui, .open-ui {
+  position: absolute;
+  inset: 0;
+  transition: opacity 0.35s ease;
+}
+.scene[data-state="open"] .closed-ui,
+.scene[data-state="closed"] .open-ui { opacity: 0; pointer-events: none; }
+.scene[data-state="open"] .open-ui { transition-delay: 0.15s; }
+
+.door-hit {
+  all: unset;
+  position: absolute;
+  left: 25%;
+  top: 18%;
+  width: 56%;
+  height: 70%;
+  cursor: pointer;
+  border-radius: 6cqw;
+}
+.door-hit:focus-visible { outline: 3px solid #fff; outline-offset: -6px; }
+
+/* ---------- Магніти та стікер на нижніх дверцятах ---------- */
+
+.magnets {
+  position: absolute;
+  left: 28%;
+  right: 24%;
+  top: 55.5%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.1cqw;
+  pointer-events: none;
+}
+.magnet {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6cqw;
+  padding: 0.8cqw 1.3cqw;
+  border-radius: 999px;
+  font-size: 2.3cqw;
+  font-variant-numeric: tabular-nums;
+  color: #22313d;
+  background: #fff;
+  box-shadow: 0 0.7cqw 1cqw rgba(0, 0, 0, 0.22), inset 0 -0.3cqw 0 rgba(0, 0, 0, 0.08);
+}
+.magnet:nth-child(odd) { rotate: -4deg; }
+.magnet:nth-child(even) { rotate: 3deg; }
+.magnet.soon { background: #fff2cf; }
+.magnet.expired { background: #ffd9d9; }
+
+.sticky-note {
+  all: unset;
+  cursor: pointer;
+  position: absolute;
+  left: 32%;
+  top: 63%;
+  width: 38%;
+  padding: 3.4cqw 2.2cqw 2.2cqw;
+  rotate: -2.5deg;
+  background: linear-gradient(180deg, #fff59a, #ffec6e);
+  color: #4a3f10;
+  font-family: "Segoe Print", "Comic Sans MS", var(--font-body);
+  font-size: 2.4cqw;
+  line-height: 1.3;
+  box-shadow: 0 1.6cqw 2.2cqw -1cqw rgba(0, 0, 0, 0.4);
+  transition: rotate 0.2s, scale 0.2s;
+}
+.sticky-note::before {
+  content: "";
+  position: absolute;
+  top: -1.3cqw;
+  left: 50%;
+  translate: -50% 0;
+  width: 3.6cqw;
+  height: 3.6cqw;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #8fd3ff, #2f7fc4);
+  box-shadow: 0 0.5cqw 0.7cqw rgba(0, 0, 0, 0.3);
+}
+.sticky-note:hover, .sticky-note:focus-visible { rotate: 0deg; scale: 1.03; }
+.sticky-note ol { margin: 1.2cqw 0 0; padding-left: 3.2cqw; }
+.sticky-note li { margin: 0.3cqw 0; }
+
+/* ---------- Полиці поверх фото відчиненого холодильника ---------- */
+
+.shelf {
+  position: absolute; /* left/top/width/height задає JS із розмітки фото (scene.js) */
+  border-radius: 1cqw;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.shelf.drop-target { background: rgba(255, 255, 255, 0.28); box-shadow: inset 0 0 0 0.5cqw rgba(224, 87, 63, 0.9); }
+.shelf-items {
+  --tw: 7.4cqw;
+  --th: 7cqw;
+  position: absolute;
+  inset: 0;
+}
+
+/* ---------- Продукти ---------- */
+
+.product {
+  position: absolute;
+  left: calc(var(--x, 0) * (100% - var(--tw)));
+  top: calc(var(--y, 1) * (100% - var(--th)));
+  width: var(--tw);
+  height: var(--th);
+  display: grid;
+  place-items: center;
+  cursor: grab;
+  touch-action: none;
+  transition: translate 0.15s, scale 0.15s;
+  z-index: 1;
+}
+.product:hover, .product:focus-visible { translate: 0 -0.6cqw; scale: 1.12; z-index: 4; }
+.product .emoji {
+  font-size: 5.4cqw;
+  line-height: 1;
+  filter: drop-shadow(0 0.5cqw 0.4cqw rgba(0, 0, 0, 0.35));
+}
+/* Назва показується підказкою при наведенні */
+.product .label {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  translate: -50% 0;
+  padding: 0.3cqw 1cqw;
+  border-radius: 999px;
+  background: rgba(30, 20, 15, 0.82);
+  color: #fff;
+  font-size: max(10px, 2cqw);
+  font-weight: 700;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.product:hover .label, .product:focus-visible .label { opacity: 1; }
+.product::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1.5cqw;
+  height: 1.5cqw;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 0.35cqw #fff;
+}
+.product.soon::after { background: var(--soon); animation: pulse 1.2s infinite; }
+.product.expired::after { background: var(--expired); }
+.product.expired .emoji { filter: grayscale(0.7) sepia(0.4) hue-rotate(40deg); animation: wobble 2.4s infinite; }
+.product.dragging { opacity: 0.3; }
+.product.drag-ghost {
+  position: fixed;
+  z-index: 100;
+  pointer-events: none;
+  rotate: -6deg;
+  scale: 1.15;
+  transition: none;
+}
+.product.drag-ghost .emoji { font-size: var(--ghost-emoji, 32px); }
+.product.drag-ghost::after { width: var(--ghost-dot, 9px); height: var(--ghost-dot, 9px); box-shadow: 0 0 0 2px #fff; }
+
+.product.dropping { animation: drop 0.6s cubic-bezier(0.3, 1.5, 0.6, 1) 0.5s both; }
+.product.leaving { animation: leave 0.45s ease-in forwards; }
+.product.trashed { animation: trash 0.45s ease-in forwards; }
+
+@keyframes pulse { 50% { scale: 1.5; opacity: 0.6; } }
+@keyframes wobble { 0%, 100% { rotate: 0deg; } 25% { rotate: -6deg; } 75% { rotate: 6deg; } }
+@keyframes drop { from { translate: 0 -8cqw; opacity: 0; } to { translate: 0 0; opacity: 1; } }
+@keyframes leave { to { translate: 0 -6cqw; scale: 1.4; opacity: 0; } }
+@keyframes trash { to { translate: 0 6cqw; rotate: 40deg; scale: 0.4; opacity: 0; } }
+
+/* ---------- Урна ---------- */
+
+.trash {
+  position: absolute;
+  left: 2%;
+  bottom: 1.5%;
+  width: 21%;
+  aspect-ratio: 380 / 895;
+  z-index: 5;
+  pointer-events: none;
+  translate: 0 120%;
+  opacity: 0;
+  transition: translate 0.45s cubic-bezier(0.3, 1.4, 0.5, 1), opacity 0.25s;
+  filter: drop-shadow(0 2cqw 2cqw rgba(30, 10, 5, 0.45));
+}
+.trash.show { translate: 0 0; opacity: 1; }
+.bin {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom;
+  transition: opacity 0.12s;
+}
+.bin-open { opacity: 0; }
+/* Продукт над урною — кришка відкривається, урна нетерпляче підстрибує */
+.trash.hot .bin-open { opacity: 1; }
+.trash.hot .bin-closed { opacity: 0; }
+.trash.hot { animation: bin-eager 0.5s ease-in-out infinite; }
+/* Проковтнула продукт */
+.trash.gulp { animation: bin-gulp 0.5s ease-out; }
+@keyframes bin-eager { 50% { scale: 1.04 0.97; } }
+@keyframes bin-gulp {
+  30% { scale: 1.08 0.9; }
+  60% { scale: 0.96 1.05; }
+}
+
+/* Продукт летить в урну */
+.product.drag-ghost.to-trash {
+  transition: left 0.35s cubic-bezier(0.5, 0, 0.8, 0.4), top 0.35s cubic-bezier(0.5, 0, 0.8, 0.4), scale 0.35s, opacity 0.35s 0.1s;
+  scale: 0.35;
+  opacity: 0;
+}
+
+/* ---------- Бульбашка з думками холодильника ---------- */
+
+.mood-bubble {
+  grid-column: 1;
+  justify-self: end;
+  align-self: start;
+  margin: 26vh 0 0;
+  max-width: 240px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: #fffdf8;
+  color: #3d2b25;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  box-shadow: 0 8px 18px -8px rgba(0, 0, 0, 0.35);
+  position: relative;
+}
+.mood-bubble::before {
+  content: "";
+  position: absolute;
+  right: -10px;
+  top: 22px;
+  border: 10px solid transparent;
+  border-left-color: #fffdf8;
+  border-right: 0;
+}
+
+/* ---------- Під сценою ---------- */
+
+.actions-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding-block: 18px 40px;
+  padding-left: 16px;
+  padding-right: 16px;
+  text-align: center;
+  color: var(--ink-soft);
+}
+.actions-bar .buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.add-button, .toggle-button {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  padding: 12px 22px;
+  border-radius: 999px;
+}
+.add-button { box-shadow: 0 8px 18px -8px var(--accent); }
+
+/* ---------- Діалоги ---------- */
+
+dialog {
+  width: min(420px, calc(100vw - 32px));
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 0;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
+}
+dialog h2 { margin: 0 0 12px; font-size: 1.3rem; }
+dialog::backdrop { background: rgba(30, 15, 10, 0.45); backdrop-filter: blur(2px); }
+dialog[open] { animation: pop 0.2s ease-out; }
+@keyframes pop { from { transform: scale(0.95); opacity: 0; } }
+
+#add-form, .item-card, .dialog-body { padding: 20px; }
+#add-form { display: grid; gap: 12px; }
+#add-form label { display: grid; gap: 4px; font-size: 0.85rem; color: var(--muted); }
+input, select {
+  font: inherit;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--field);
+  color: var(--text);
+}
+.preview { display: inline-block; }
+.preview.big { font-size: 64px; text-align: center; }
+.item-card { text-align: center; }
+.item-card h2 { margin-bottom: 4px; }
+.expiry { font-weight: 700; }
+.expiry.ok { color: var(--ok); }
+.expiry.soon { color: var(--soon); }
+.expiry.expired { color: var(--expired); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+.item-card .actions { justify-content: center; }
+
+.recipes { list-style: none; margin: 0; padding: 0; max-height: 60vh; overflow: auto; }
+.recipe {
   padding: 10px 12px;
-  border-left: 4px solid var(--ok);
-  border-radius: 6px;
-  background: var(--bg);
+  border-radius: 10px;
+  background: var(--field);
   margin-bottom: 8px;
 }
-.item { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.item.soon { border-left-color: var(--soon); }
-.item.expired { border-left-color: var(--expired); }
-.recipe { border-left-color: var(--accent); }
-
-.remove { padding: 4px 10px; }
-
+.recipe .small { margin-top: 4px; }
 .badge {
   display: inline-block;
   margin-left: 8px;
   padding: 1px 8px;
   border-radius: 999px;
   font-size: 0.75rem;
+  font-weight: 700;
   background: var(--accent);
   color: #fff;
 }
 .badge.soon { background: var(--soon); }
 
-.empty { color: var(--muted); padding: 8px 0; }
+/* ---------- Встановлений застосунок (на головному екрані телефона) ---------- */
+
+body { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+@media (display-mode: standalone) {
+  .intro p { display: none; }
+  .intro { padding-top: 10px; }
+  .intro h1 { font-size: 1.5rem; }
+  .actions-bar .small { display: none; }
+  .actions-bar { padding-block: 12px 18px; }
+  .scene { width: min(calc(100vw - 32px), 540px, calc((100svh - 200px) * 971 / 1619)); }
+}
+
+/* ---------- Вузькі екрани ---------- */
+
+@media (max-width: 1000px) {
+  .stage { grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 14px; }
+  .scene { grid-column: 1; }
+  .mood-bubble { grid-column: 1; justify-self: center; margin: 0; max-width: min(420px, 100%); text-align: center; }
+  .mood-bubble::before {
+    right: auto;
+    left: 50%;
+    top: auto;
+    bottom: -10px;
+    translate: -50% 0;
+    border: 10px solid transparent;
+    border-top-color: #fffdf8;
+    border-bottom: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

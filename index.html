@@ -2,40 +2,128 @@
 <html lang="uk">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>ReFridge</title>
-    <meta name="description" content="ReFridge — облік продуктів у холодильнику та рецепти з того, що є." />
+    <meta name="description" content="ReFridge — інтерактивний холодильник: облік продуктів, терміни придатності та рецепти з того, що є." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@400;600;700&display=swap" />
     <link rel="stylesheet" href="src/styles.css" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="icons/favicon.png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <meta name="theme-color" content="#f58a72" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="ReFridge" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   </head>
   <body>
-    <header>
-      <h1>❄️ ReFridge</h1>
-      <p class="muted">Знайте, що у холодильнику, і не викидайте їжу.</p>
-      <div id="stats" class="stats"></div>
+    <!-- Розмитий фон із тієї ж кухні, щоб сцена не «висіла» на порожньому полі -->
+    <div class="backdrop" id="backdrop" aria-hidden="true"></div>
+
+    <header class="intro">
+      <h1>ReFridge</h1>
+      <p>Відчиніть холодильник, покладіть продукти й тримайте його в доброму настрої.</p>
     </header>
 
-    <main>
-      <section class="card">
-        <h2>Додати продукт</h2>
-        <form id="add-form" class="add-form">
-          <input name="name" placeholder="Назва (напр. молоко)" required />
-          <input name="quantity" placeholder="Кількість (напр. 1 л)" />
-          <select name="category"></select>
-          <input name="expires" type="date" required aria-label="Придатний до" />
-          <button type="submit">Додати</button>
-        </form>
-      </section>
+    <main class="stage">
+      <p class="mood-bubble" id="mood-bubble" role="status" aria-live="polite"></p>
 
-      <section class="card">
-        <h2>У холодильнику</h2>
-        <ul id="items" class="list"></ul>
-      </section>
+      <div class="scene" id="scene" data-mood="neutral" data-state="closed">
+        <!-- Фото кухні: зачинений і відчинений холодильник для кожного настрою -->
+        <img class="photo" data-for="closed sad" src="assets/closed-sad.webp" alt="" />
+        <img class="photo" data-for="closed happy" src="assets/closed-happy.webp" alt="" />
+        <img class="photo" data-for="closed neutral" src="assets/closed-neutral.webp" alt="" />
+        <img class="photo" data-for="open sad" src="assets/open-sad.webp" alt="" />
+        <img class="photo" data-for="open happy" src="assets/open-happy.webp" alt="" />
+        <img class="photo" data-for="open neutral" src="assets/open-neutral.webp" alt="" />
 
-      <section class="card">
-        <h2>Що приготувати</h2>
-        <ul id="recipes" class="list"></ul>
-      </section>
+        <!-- Дверцята, що повертаються на петлях під час відчинення й зачинення -->
+        <div class="swing" aria-hidden="true">
+          <div class="veil"></div>
+          <div class="leaf leaf-top"></div>
+          <div class="leaf leaf-bottom"></div>
+        </div>
+
+        <!-- Зачинений: дверцята, магніти й стікер -->
+        <div class="closed-ui">
+          <button class="door-hit" id="door-hit" type="button" aria-label="Відчинити холодильник"></button>
+          <div class="magnets" id="magnets"></div>
+          <button class="sticky-note" id="note" type="button" aria-label="Усі рецепти">
+            <strong>Що приготувати?</strong>
+            <ol id="note-recipes"></ol>
+          </button>
+        </div>
+
+        <!-- Урна: виїжджає, коли берете продукт; кинете в неї — продукт викинуто -->
+        <div class="trash" id="trash" aria-hidden="true">
+          <img class="bin bin-closed" src="assets/bin-closed.webp" alt="" />
+          <img class="bin bin-open" src="assets/bin-open.webp" alt="" />
+        </div>
+
+        <!-- Відчинений: полиці, шухляди й балкони дверцят поверх фото -->
+        <div class="open-ui" id="open-ui">
+        <div class="shelf" data-shelf="dairy" data-category="dairy" aria-label="Молочне"><div class="shelf-items"></div></div>
+        <div class="shelf" data-shelf="meat" data-category="meat" aria-label="М'ясо та риба"><div class="shelf-items"></div></div>
+        <div class="shelf" data-shelf="grain" data-category="grain" aria-label="Крупи та хліб"><div class="shelf-items"></div></div>
+        <div class="shelf" data-shelf="veg" data-category="veg" aria-label="Овочі"><div class="shelf-items"></div></div>
+        <div class="shelf" data-shelf="fruit" data-category="fruit" aria-label="Фрукти"><div class="shelf-items"></div></div>
+        <div class="shelf" data-shelf="door-1" data-category="other" aria-label="Дверцята"><div class="shelf-items"></div></div>
+        <div class="shelf" data-shelf="door-2" data-category="other" aria-label="Дверцята"><div class="shelf-items"></div></div>
+        <div class="shelf" data-shelf="door-3" data-category="other" aria-label="Дверцята"><div class="shelf-items"></div></div>
+        <div class="shelf" data-shelf="freezer-1" data-category="frozen" aria-label="Морозилка"><div class="shelf-items"></div></div>
+        <div class="shelf" data-shelf="freezer-2" data-category="frozen" aria-label="Морозилка"><div class="shelf-items"></div></div>
+        <div class="shelf" data-shelf="freezer-3" data-category="frozen" aria-label="Морозилка"><div class="shelf-items"></div></div>
+        </div>
+      </div>
     </main>
+
+    <div class="actions-bar">
+      <div class="buttons">
+        <button class="add-button" id="add-button" type="button">＋ Покласти продукт</button>
+        <button class="toggle-button secondary" id="toggle-button" type="button">Відчинити</button>
+      </div>
+      <p class="small">Натисніть на продукт, щоб використати його, перетягніть на будь-яке вільне місце або в урну, щоб викинути. Клік поза полицями зачиняє холодильник.</p>
+    </div>
+
+    <dialog id="add-dialog">
+      <form id="add-form" method="dialog">
+        <h2><span id="add-preview" class="preview">📦</span> Новий продукт</h2>
+        <label>Назва <input id="add-name" name="name" placeholder="напр. молоко" required autocomplete="off" /></label>
+        <label>Кількість <input id="add-quantity" name="quantity" placeholder="напр. 1 л" autocomplete="off" /></label>
+        <label>Полиця <select id="add-category" name="category"></select></label>
+        <label>Придатний до <input id="add-expires" name="expires" type="date" required /></label>
+        <div class="actions">
+          <button type="button" class="secondary" data-close>Скасувати</button>
+          <button type="submit">Покласти</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- Картка продукту -->
+    <dialog id="item-dialog">
+      <div class="item-card">
+        <div class="preview big" id="item-emoji"></div>
+        <h2 id="item-name"></h2>
+        <p id="item-meta" class="muted"></p>
+        <p id="item-expiry" class="expiry"></p>
+        <div class="actions">
+          <button type="button" id="item-used">😋 Використано</button>
+          <button type="button" id="item-wasted" class="danger">🗑️ Викинути</button>
+          <button type="button" class="secondary" data-close>Закрити</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Рецепти -->
+    <dialog id="recipes-dialog">
+      <div class="dialog-body">
+        <h2>Що приготувати</h2>
+        <ul id="recipes" class="recipes"></ul>
+        <div class="actions"><button type="button" class="secondary" data-close>Закрити</button></div>
+      </div>
+    </dialog>
 
     <script type="module" src="src/app.js"></script>
   </body>
