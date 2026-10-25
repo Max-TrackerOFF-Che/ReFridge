@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ReFridge</title>
+    <meta name="description" content="ReFridge — облік продуктів у холодильнику та рецепти з того, що є." />
+    <link rel="stylesheet" href="src/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>❄️ ReFridge</h1>
+      <p class="muted">Знайте, що у холодильнику, і не викидайте їжу.</p>
+      <div id="stats" class="stats"></div>
+    </header>
+
+    <main>
+      <section class="card">
+        <h2>Додати продукт</h2>
+        <form id="add-form" class="add-form">
+          <input name="name" placeholder="Назва (напр. молоко)" required />
+          <input name="quantity" placeholder="Кількість (напр. 1 л)" />
+          <select name="category"></select>
+          <input name="expires" type="date" required aria-label="Придатний до" />
+          <button type="submit">Додати</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>У холодильнику</h2>
+        <ul id="items" class="list"></ul>
+      </section>
+
+      <section class="card">
+        <h2>Що приготувати</h2>
+        <ul id="recipes" class="list"></ul>
+      </section>
+    </main>
+
+    <script type="module" src="src/app.js"></script>
+  </body>
+</html>

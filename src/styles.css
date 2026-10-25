@@ -1,0 +1,112 @@
+:root {
+  --bg: #f4f8fb;
+  --card: #ffffff;
+  --text: #1c2a36;
+  --muted: #6b7c8a;
+  --accent: #2b8fd6;
+  --ok: #3aa76d;
+  --soon: #e3a21a;
+  --expired: #d64545;
+  --border: #dde6ee;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1820;
+    --card: #17232e;
+    --text: #e3edf5;
+    --muted: #8ea2b3;
+    --border: #26394a;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+header, main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+h1 { margin: 8px 0 0; }
+h2 { margin-top: 0; font-size: 1.1rem; }
+
+.muted { color: var(--muted); }
+.small { font-size: 0.85rem; margin-top: 4px; }
+
+.stats { display: flex; flex-wrap: wrap; gap: 8px; }
+.stat {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+.stat.soon { border-color: var(--soon); }
+.stat.expired { border-color: var(--expired); }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.add-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+input, select, button {
+  font: inherit;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+
+button {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.list { list-style: none; margin: 0; padding: 0; }
+
+.item, .recipe {
+  padding: 10px 12px;
+  border-left: 4px solid var(--ok);
+  border-radius: 6px;
+  background: var(--bg);
+  margin-bottom: 8px;
+}
+.item { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.item.soon { border-left-color: var(--soon); }
+.item.expired { border-left-color: var(--expired); }
+.recipe { border-left-color: var(--accent); }
+
+.remove { padding: 4px 10px; }
+
+.badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: var(--accent);
+  color: #fff;
+}
+.badge.soon { background: var(--soon); }
+
+.empty { color: var(--muted); padding: 8px 0; }
