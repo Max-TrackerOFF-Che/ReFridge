@@ -19,7 +19,8 @@ function save(key, value) {
   }
 }
 
-export const loadItems = () => load(ITEMS_KEY, []);
+/** null — якщо холодильник ще ні разу не зберігали (перший візит). */
+export const loadItems = () => load(ITEMS_KEY, null);
 export const saveItems = (items) => save(ITEMS_KEY, items);
 
 /** Скільки продуктів використано, а скільки викинуто. */

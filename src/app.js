@@ -1,9 +1,34 @@
-import { CATEGORIES, SHELF_LIFE, addDays, daysUntil, freshness, matchRecipes, sortByExpiry } from "./logic.js";
+import { CATEGORIES, SHELF_LIFE, addDays, daysUntil, freshness, fridgeMood, matchRecipes, sortByExpiry } from "./logic.js";
 import { guessProduct, productEmoji } from "./products.js";
 import { RECIPES } from "./recipes.js";
 import { loadItems, loadStats, saveItems, saveStats } from "./store.js";
 
-let items = loadItems();
+// Під час першого візиту кладемо кілька продуктів-прикладів, щоб було з чим погратися.
+function sampleItems() {
+  const sample = [
+    ["Молоко", "1 л", "dairy", 1],
+    ["Яйця", "10 шт", "dairy", 12],
+    ["Сир", "200 г", "dairy", 9],
+    ["Курка", "1 кг", "meat", -1],
+    ["Помідори", "", "veg", 4],
+    ["Огірки", "", "veg", 2],
+    ["Кріп", "пучок", "veg", 3],
+    ["Банани", "", "fruit", 5],
+    ["Яблука", "", "fruit", 14],
+    ["Хліб", "", "grain", 3],
+    ["Борошно", "1 кг", "grain", 120],
+    ["Кетчуп", "", "other", 60],
+    ["Пельмені", "500 г", "frozen", 80],
+    ["Морозиво", "", "frozen", 45],
+  ];
+  return sample.map(([name, quantity, category, days]) => ({ id: newId(), name, quantity, category, expires: addDays(days) }));
+}
+
+function newId() {
+  return crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+let items = loadItems() ?? sampleItems();
 let stats = loadStats();
 let justAdded = null;
 let selectedId = null;
@@ -243,7 +268,7 @@ addForm.addEventListener("submit", (e) => {
   e.preventDefault();
   const f = addForm.elements;
   const item = {
-    id: crypto.randomUUID(),
+    id: newId(),
     name: f.name.value.trim(),
     quantity: f.quantity.value.trim(),
     category: f.category.value,
@@ -316,13 +341,81 @@ function render() {
       : [el("li", { className: "muted", textContent: "Покладіть продукти, щоб побачити рецепти." })]),
   );
 
-  // Сигнал на зачинених дверцятах, якщо всередині щось псується.
-  for (const compartment of document.querySelectorAll(".compartment")) {
-    const zone = compartment.dataset.zone;
-    const inZone = items.filter((i) => (shelfOf(i) === "frozen") === (zone === "freezer"));
-    const alert = inZone.some((i) => freshness(i.expires) !== "ok");
-    compartment.classList.toggle("alert", alert);
-  }
+  renderMood();
 }
+
+/* ---------- Настрій холодильника ---------- */
+
+const fridge = $("#fridge");
+
+function plural(n, one, few, many) {
+  const m10 = n % 10;
+  const m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+  return many;
+}
+const products = (n) => `${n} ${plural(n, "продукт", "продукти", "продуктів")}`;
+
+function moodText({ mood, total, expired, soon, nearest }) {
+  if (!total) return "Я порожній… Покладіть у мене щось смачне!";
+  if (mood === "sad") return `Мені погано: ${expired} з ${total} ${plural(total, "продукту", "продуктів", "продуктів")} зіпсувалися. Викиньте їх, будь ласка.`;
+  if (mood === "happy") return `Усе свіже! Найближчий термін спливає через ${nearest} ${plural(nearest, "день", "дні", "днів")}.`;
+  if (expired) return `Тримаюся, але ${products(expired)} вже ${plural(expired, "прострочений", "прострочені", "прострочені")}.`;
+  if (soon) return `${products(soon)} ${plural(soon, "зіпсується", "зіпсуються", "зіпсуються")} за 2 дні. Приготуйте щось!`;
+  return `Усе гаразд. Найближчий термін спливає через ${nearest} ${plural(nearest, "день", "дні", "днів")}.`;
+}
+
+function renderMood() {
+  const state = fridgeMood(items);
+  if (fridge.dataset.mood !== state.mood) {
+    fridge.dataset.mood = state.mood;
+    fridge.classList.remove("mood-change");
+    void fridge.offsetWidth; // перезапуск анімації
+    fridge.classList.add("mood-change");
+  }
+  $("#mood-bubble").textContent = moodText(state);
+}
+fridge.addEventListener("animationend", (e) => {
+  if (e.animationName === "jiggle") fridge.classList.remove("mood-change");
+});
+
+// Очі стежать за курсором чи пальцем.
+document.addEventListener("pointermove", (e) => {
+  for (const iris of document.querySelectorAll(".face .iris")) {
+    const eye = iris.closest(".eye").querySelector(".eyeball").getBoundingClientRect();
+    if (!eye.width) continue;
+    const dx = e.clientX - (eye.left + eye.width / 2);
+    const dy = e.clientY - (eye.top + eye.height / 2);
+    const k = Math.min(1, Math.hypot(dx, dy) / 300) / (Math.hypot(dx, dy) || 1);
+    iris.style.transform = `translate(${(dx * k * 9).toFixed(1)}px, ${(dy * k * 6).toFixed(1)}px)`;
+  }
+});
+
+/* ---------- Годинник ---------- */
+
+for (let n = 1; n <= 12; n++) {
+  const a = (n / 12) * 2 * Math.PI;
+  const span = el("span", { textContent: n });
+  span.style.left = `${50 + 38 * Math.sin(a)}%`;
+  span.style.top = `${50 - 38 * Math.cos(a)}%`;
+  $("#clock-numbers").append(span);
+}
+
+function tick() {
+  const now = new Date();
+  const s = now.getSeconds();
+  const m = now.getMinutes() + s / 60;
+  const h = (now.getHours() % 12) + m / 60;
+  $("#hand-second").style.rotate = `${s * 6}deg`;
+  $("#hand-minute").style.rotate = `${m * 6}deg`;
+  $("#hand-hour").style.rotate = `${h * 30}deg`;
+  $("#clock").setAttribute("aria-label", `Годинник: ${now.toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })}`);
+}
+tick();
+setInterval(tick, 1000);
+
+// Опівночі терміни зсуваються — перемальовуємо раз на хвилину.
+setInterval(render, 60_000);
 
 render();

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { addDays, daysUntil, freshness, matchRecipes, sortByExpiry } from "../src/logic.js";
+import { addDays, daysUntil, freshness, fridgeMood, matchRecipes, sortByExpiry } from "../src/logic.js";
 import { guessProduct, productEmoji } from "../src/products.js";
 
 const today = new Date(2026, 9, 25); // 25 жовтня 2026
@@ -56,4 +56,23 @@ test("guessProduct розпізнає продукт і полицю", () => {
 test("productEmoji бере емодзі полиці, якщо продукт невідомий", () => {
   assert.equal(productEmoji({ name: "щось", category: "frozen" }), "🧊");
   assert.equal(productEmoji({ name: "банани", category: "other" }), "🍌");
+});
+
+test("fridgeMood: червоний, зелений і сірий стани", () => {
+  const at = (days) => ({ expires: addDays(days, today) });
+  const many = (n, days) => Array.from({ length: n }, () => at(days));
+
+  // 2 з 10 прострочені (20% > 10%) — плаче
+  assert.equal(fridgeMood([...many(2, -1), ...many(8, 10)], today).mood, "sad");
+  // рівно 10% — ще не червоний
+  assert.equal(fridgeMood([at(-1), ...many(9, 10)], today).mood, "neutral");
+  // усе свіже, найближчий термін через 5 днів — радіє
+  assert.equal(fridgeMood([at(5), at(30)], today).mood, "happy");
+  // найближчий через 4 дні — ще не зелений
+  assert.equal(fridgeMood([at(4), at(30)], today).mood, "neutral");
+  // 20% псуються за ≤ 2 дні, прострочених немає — сірий
+  const r = fridgeMood([at(2), ...many(4, 10)], today);
+  assert.deepEqual(r, { mood: "neutral", total: 5, expired: 0, soon: 1, nearest: 2 });
+  // порожній холодильник — сірий
+  assert.equal(fridgeMood([], today).mood, "neutral");
 });

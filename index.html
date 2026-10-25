@@ -5,93 +5,161 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ReFridge</title>
     <meta name="description" content="ReFridge — інтерактивний холодильник: облік продуктів, терміни придатності та рецепти з того, що є." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@400;600;700&display=swap" />
     <link rel="stylesheet" href="src/styles.css" />
   </head>
   <body>
-    <header>
-      <h1>❄️ ReFridge</h1>
-      <p class="muted">Відчиніть дверцята, покладіть продукти й не дайте їм зіпсуватися.</p>
-      <p class="muted small">Натисніть на продукт, щоб використати його, або перетягніть на іншу полицю. Порожнє місце всередині зачиняє дверцята.</p>
-    </header>
+    <main class="kitchen">
+      <header class="intro">
+        <h1>ReFridge</h1>
+        <p>Відчиніть дверцята, покладіть продукти й тримайте холодильник у доброму настрої.</p>
+      </header>
 
-    <main class="scene">
-      <div class="fridge" id="fridge">
-        <!-- Морозилка -->
-        <section class="compartment freezer" data-zone="freezer">
-          <div class="interior">
-            <div class="shelf" data-category="frozen">
-              <span class="shelf-label">Морозилка</span>
-              <div class="shelf-items"></div>
-            </div>
-          </div>
-          <div class="door" role="button" tabindex="0" aria-expanded="false" aria-label="Морозилка: відчинити або зачинити">
-            <div class="door-face door-front">
-              <span class="handle"></span>
-              <span class="logo">ReFridge</span>
-              <span class="hint">натисніть, щоб відчинити</span>
-            </div>
-            <div class="door-face door-back"></div>
-          </div>
-        </section>
+      <!-- Стіна: полички й годинник -->
+      <div class="wall-shelf left" aria-hidden="true"><span>🫙</span><span>🧂</span></div>
+      <div class="clock" id="clock" aria-label="Годинник">
+        <div class="clock-numbers" id="clock-numbers"></div>
+        <span class="hand hour" id="hand-hour"></span>
+        <span class="hand minute" id="hand-minute"></span>
+        <span class="hand second" id="hand-second"></span>
+        <span class="clock-pin"></span>
+      </div>
+      <div class="wall-shelf right" aria-hidden="true"><span>🥫</span><span>🫖</span></div>
 
-        <!-- Основна камера -->
-        <section class="compartment main" data-zone="main">
-          <div class="interior">
-            <div class="lamp"></div>
-            <div class="shelf" data-category="dairy">
-              <span class="shelf-label">Молочне</span>
-              <div class="shelf-items"></div>
-            </div>
-            <div class="shelf" data-category="meat">
-              <span class="shelf-label">М'ясо та риба</span>
-              <div class="shelf-items"></div>
-            </div>
-            <div class="shelf" data-category="grain">
-              <span class="shelf-label">Крупи та хліб</span>
-              <div class="shelf-items"></div>
-            </div>
-            <div class="shelf" data-category="other">
-              <span class="shelf-label">Інше</span>
-              <div class="shelf-items"></div>
-            </div>
-            <div class="drawers">
-              <div class="shelf drawer" data-category="veg">
-                <span class="shelf-label">Овочі</span>
-                <div class="shelf-items"></div>
-              </div>
-              <div class="shelf drawer" data-category="fruit">
-                <span class="shelf-label">Фрукти</span>
+      <!-- Тумби -->
+      <div class="counter left" aria-hidden="true"><div class="counter-top"><span class="books"><i></i><i></i><i></i><i></i></span></div></div>
+      <div class="counter right" aria-hidden="true"><div class="counter-top"><span class="toaster"></span></div></div>
+
+      <!-- Холодильник -->
+      <div class="fridge-wrap">
+        <p class="mood-bubble" id="mood-bubble" role="status" aria-live="polite"></p>
+        <div class="fridge" id="fridge" data-mood="neutral">
+          <div class="sparkles" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+
+          <!-- Морозилка (верхні дверцята з обличчям) -->
+          <section class="compartment freezer" data-zone="freezer">
+            <div class="interior">
+              <div class="shelf" data-category="frozen">
+                <span class="shelf-label">Морозилка</span>
                 <div class="shelf-items"></div>
               </div>
             </div>
-          </div>
-          <div class="door" role="button" tabindex="0" aria-expanded="false" aria-label="Холодильник: відчинити або зачинити">
-            <div class="door-face door-front">
-              <span class="handle"></span>
-              <div class="magnets" id="magnets"></div>
-              <button class="sticky-note" id="note" type="button" aria-label="Усі рецепти">
-                <strong>Що приготувати?</strong>
-                <ol id="note-recipes"></ol>
-              </button>
-              <span class="hint">натисніть, щоб відчинити</span>
+            <div class="door" role="button" tabindex="0" aria-expanded="false" aria-label="Морозилка: відчинити або зачинити">
+              <div class="door-face door-front">
+                <span class="vents" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                <svg class="face" viewBox="0 0 240 140" aria-hidden="true">
+                  <defs>
+                    <clipPath id="eye-n-l"><ellipse cx="76" cy="66" rx="25" ry="21" /></clipPath>
+                    <clipPath id="eye-n-r"><ellipse cx="164" cy="66" rx="25" ry="21" /></clipPath>
+                    <clipPath id="eye-s-l"><ellipse cx="76" cy="70" rx="25" ry="20" /></clipPath>
+                    <clipPath id="eye-s-r"><ellipse cx="164" cy="70" rx="25" ry="20" /></clipPath>
+                  </defs>
+                  <!-- Спокійний -->
+                  <g class="m-neutral">
+                    <path class="brow" d="M52 30 Q76 20 100 28" />
+                    <path class="brow" d="M140 28 Q164 20 188 30" />
+                    <g class="eye blink"><ellipse class="eyeball" cx="76" cy="66" rx="25" ry="21" /><g class="iris"><circle cx="76" cy="66" r="14" fill="#7a4626" /><circle cx="76" cy="66" r="8" fill="#1d120d" /><circle cx="81" cy="61" r="3.5" fill="#fff" /></g><path class="lid" clip-path="url(#eye-n-l)" d="M50 56 Q76 40 102 56 L102 40 L50 40 Z" /></g>
+                    <g class="eye blink"><ellipse class="eyeball" cx="164" cy="66" rx="25" ry="21" /><g class="iris"><circle cx="164" cy="66" r="14" fill="#7a4626" /><circle cx="164" cy="66" r="8" fill="#1d120d" /><circle cx="169" cy="61" r="3.5" fill="#fff" /></g><path class="lid" clip-path="url(#eye-n-r)" d="M138 56 Q164 40 190 56 L190 40 L138 40 Z" /></g>
+                    <path class="mouth" d="M106 114 H134" />
+                  </g>
+                  <!-- Сумний -->
+                  <g class="m-sad">
+                    <path class="brow" d="M48 42 Q76 36 102 22" />
+                    <path class="brow" d="M138 22 Q164 36 192 42" />
+                    <g class="eye"><ellipse class="eyeball" cx="76" cy="70" rx="25" ry="20" /><g class="iris"><circle cx="76" cy="73" r="13" fill="#7a4626" /><circle cx="76" cy="73" r="7.5" fill="#1d120d" /><circle cx="80" cy="69" r="3.5" fill="#fff" /></g><path class="lid" clip-path="url(#eye-s-l)" d="M48 58 Q80 52 102 70 L102 44 L48 44 Z" /><path class="rim" d="M54 84 Q76 94 98 84" /></g>
+                    <g class="eye"><ellipse class="eyeball" cx="164" cy="70" rx="25" ry="20" /><g class="iris"><circle cx="164" cy="73" r="13" fill="#7a4626" /><circle cx="164" cy="73" r="7.5" fill="#1d120d" /><circle cx="168" cy="69" r="3.5" fill="#fff" /></g><path class="lid" clip-path="url(#eye-s-r)" d="M138 70 Q160 52 192 58 L192 44 L138 44 Z" /><path class="rim" d="M142 84 Q164 94 186 84" /></g>
+                    <path class="tear t1" d="M58 84 q-10 16 0 22 q10 -6 0 -22 Z" />
+                    <path class="tear t2" d="M182 84 q-10 16 0 22 q10 -6 0 -22 Z" />
+                    <path class="mouth" d="M96 124 Q120 100 144 124" />
+                  </g>
+                  <!-- Щасливий -->
+                  <g class="m-happy">
+                    <path class="brow" d="M54 22 Q78 8 100 20" />
+                    <path class="brow" d="M140 20 Q162 8 186 22" />
+                    <path class="closed-eye" d="M52 72 Q76 48 100 72" />
+                    <path class="closed-eye" d="M140 72 Q164 48 188 72" />
+                    <path class="lash" d="M52 72 l-8 -2 M55 66 l-7 -6" />
+                    <path class="lash" d="M188 72 l8 -2 M185 66 l7 -6" />
+                    <circle class="blush" cx="58" cy="96" r="15" />
+                    <circle class="blush" cx="182" cy="96" r="15" />
+                    <path class="mouth" d="M92 98 Q120 128 148 98" />
+                  </g>
+                </svg>
+                <span class="handle top" aria-hidden="true"></span>
+                <span class="hint">натисніть, щоб відчинити</span>
+              </div>
+              <div class="door-face door-back"></div>
             </div>
-            <div class="door-face door-back"></div>
-          </div>
-        </section>
-        <div class="feet"><span></span><span></span></div>
+          </section>
+
+          <!-- Основна камера -->
+          <section class="compartment main" data-zone="main">
+            <div class="interior">
+              <div class="lamp"></div>
+              <div class="shelf" data-category="dairy">
+                <span class="shelf-label">Молочне</span>
+                <div class="shelf-items"></div>
+              </div>
+              <div class="shelf" data-category="meat">
+                <span class="shelf-label">М'ясо та риба</span>
+                <div class="shelf-items"></div>
+              </div>
+              <div class="shelf" data-category="grain">
+                <span class="shelf-label">Крупи та хліб</span>
+                <div class="shelf-items"></div>
+              </div>
+              <div class="shelf" data-category="other">
+                <span class="shelf-label">Інше</span>
+                <div class="shelf-items"></div>
+              </div>
+              <div class="drawers">
+                <div class="shelf drawer" data-category="veg">
+                  <span class="shelf-label">Овочі</span>
+                  <div class="shelf-items"></div>
+                </div>
+                <div class="shelf drawer" data-category="fruit">
+                  <span class="shelf-label">Фрукти</span>
+                  <div class="shelf-items"></div>
+                </div>
+              </div>
+            </div>
+            <div class="door" role="button" tabindex="0" aria-expanded="false" aria-label="Холодильник: відчинити або зачинити">
+              <div class="door-face door-front">
+                <span class="handle bottom" aria-hidden="true"></span>
+                <div class="magnets" id="magnets"></div>
+                <button class="sticky-note" id="note" type="button" aria-label="Усі рецепти">
+                  <strong>Що приготувати?</strong>
+                  <ol id="note-recipes"></ol>
+                </button>
+                <span class="hint">натисніть, щоб відчинити</span>
+              </div>
+              <div class="door-face door-back"></div>
+            </div>
+          </section>
+          <div class="feet" aria-hidden="true"><span></span><span></span></div>
+        </div>
       </div>
 
-      <button class="add-button" id="add-button" type="button">＋ Покласти продукт</button>
+      <div class="floor" aria-hidden="true"></div>
     </main>
+
+    <div class="actions-bar">
+      <button class="add-button" id="add-button" type="button">＋ Покласти продукт</button>
+      <p class="small">Натисніть на продукт, щоб використати його, або перетягніть на іншу полицю. Порожнє місце всередині зачиняє дверцята.</p>
+    </div>
 
     <!-- Додавання продукту -->
     <dialog id="add-dialog">
       <form id="add-form" method="dialog">
         <h2><span id="add-preview" class="preview">📦</span> Новий продукт</h2>
-        <label>Назва <input name="name" placeholder="напр. молоко" required autocomplete="off" /></label>
-        <label>Кількість <input name="quantity" placeholder="напр. 1 л" autocomplete="off" /></label>
-        <label>Полиця <select name="category"></select></label>
-        <label>Придатний до <input name="expires" type="date" required /></label>
+        <label>Назва <input id="add-name" name="name" placeholder="напр. молоко" required autocomplete="off" /></label>
+        <label>Кількість <input id="add-quantity" name="quantity" placeholder="напр. 1 л" autocomplete="off" /></label>
+        <label>Полиця <select id="add-category" name="category"></select></label>
+        <label>Придатний до <input id="add-expires" name="expires" type="date" required /></label>
         <div class="actions">
           <button type="button" class="secondary" data-close>Скасувати</button>
           <button type="submit">Покласти</button>

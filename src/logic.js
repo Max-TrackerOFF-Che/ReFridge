@@ -74,3 +74,22 @@ export function matchRecipes(recipes, items, today = new Date()) {
     .filter((r) => r.matched.length > 0)
     .sort((a, b) => b.coverage - a.coverage || b.urgentUsed - a.urgentUsed);
 }
+
+/**
+ * Настрій холодильника за його вмістом:
+ * - sad (червоний) — прострочено більше 10% продуктів;
+ * - happy (зелений) — прострочених немає, а найближчий термін спливає не раніше ніж через 5 днів;
+ * - neutral (сірий) — усе інше, зокрема коли ≥ 20% продуктів псуються за 2 дні або менше.
+ */
+export function fridgeMood(items, today = new Date()) {
+  const total = items.length;
+  const days = items.map((i) => daysUntil(i.expires, today));
+  const expired = days.filter((d) => d < 0).length;
+  const soon = days.filter((d) => d >= 0 && d <= 2).length;
+  const nearest = total ? Math.min(...days) : null;
+
+  let mood = "neutral";
+  if (total && expired / total > 0.1) mood = "sad";
+  else if (total && expired === 0 && nearest >= 5) mood = "happy";
+  return { mood, total, expired, soon, nearest };
+}
