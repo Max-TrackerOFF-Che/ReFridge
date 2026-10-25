@@ -48,6 +48,12 @@
           </button>
         </div>
 
+        <!-- Урна: виїжджає, коли берете продукт; кинете в неї — продукт викинуто -->
+        <div class="trash" id="trash" aria-hidden="true">
+          <img class="bin bin-closed" src="assets/bin-closed.webp" alt="" />
+          <img class="bin bin-open" src="assets/bin-open.webp" alt="" />
+        </div>
+
         <!-- Відчинений: полиці, шухляди й балкони дверцят поверх фото -->
         <div class="open-ui" id="open-ui">
         <div class="shelf" data-shelf="dairy" data-category="dairy" aria-label="Молочне"><div class="shelf-items"></div></div>
@@ -70,7 +76,7 @@
         <button class="add-button" id="add-button" type="button">＋ Покласти продукт</button>
         <button class="toggle-button secondary" id="toggle-button" type="button">Відчинити</button>
       </div>
-      <p class="small">Натисніть на продукт, щоб використати його, або перетягніть на будь-яке вільне місце. Клік поза полицями зачиняє холодильник.</p>
+      <p class="small">Натисніть на продукт, щоб використати його, перетягніть на будь-яке вільне місце або в урну, щоб викинути. Клік поза полицями зачиняє холодильник.</p>
     </div>
 
     <dialog id="add-dialog">

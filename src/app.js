@@ -247,14 +247,48 @@ document.addEventListener("pointermove", (e) => {
     drag.ghost.classList.add("drag-ghost");
     Object.assign(drag.ghost.style, { width: `${drag.tile.offsetWidth}px`, height: `${drag.tile.offsetHeight}px` });
     drag.ghost.style.setProperty("--ghost-emoji", getComputedStyle(drag.tile.querySelector(".emoji")).fontSize);
+    // Поза сценою одиниці cqw рахуються від вікна, тож розмір крапки свіжості передаємо в px.
+    drag.ghost.style.setProperty("--ghost-dot", getComputedStyle(drag.tile, "::after").width);
     drag.ghost.classList.remove("dropping");
     document.body.append(drag.ghost);
     drag.tile.classList.add("dragging");
+    trash.classList.remove("gulp");
+    trash.classList.add("show");
   }
   drag.ghost.style.left = `${e.clientX - drag.dx}px`;
   drag.ghost.style.top = `${e.clientY - drag.dy}px`;
-  highlight(shelfAt(e.clientX, e.clientY));
+  const overTrash = isOverTrash(e.clientX, e.clientY);
+  trash.classList.toggle("hot", overTrash);
+  highlight(overTrash ? null : shelfAt(e.clientX, e.clientY));
 });
+
+/* ---------- Урна ---------- */
+
+const trash = $("#trash");
+
+function isOverTrash(x, y) {
+  const r = trash.getBoundingClientRect();
+  return trash.classList.contains("show") && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+}
+
+/** Продукт летить у відкриту урну, урна «ковтає» його й ховається. */
+function throwAway(item, ghost) {
+  const r = trash.getBoundingClientRect();
+  document.body.append(ghost);
+  void ghost.offsetWidth;
+  ghost.classList.add("to-trash");
+  ghost.style.left = `${r.left + r.width / 2 - ghost.offsetWidth / 2}px`;
+  ghost.style.top = `${r.top + r.height * 0.18}px`;
+  setTimeout(() => {
+    ghost.remove();
+    trash.classList.remove("hot");
+    trash.classList.add("gulp");
+    stats.wasted++;
+    items = items.filter((i) => i.id !== item.id);
+    commit();
+    setTimeout(() => trash.classList.remove("show", "gulp"), 650);
+  }, 380);
+}
 
 function endDrag(e) {
   if (!drag) return;
@@ -266,8 +300,14 @@ function endDrag(e) {
   highlight(null);
   suppressClick = true;
   setTimeout(() => (suppressClick = false), 0);
-  const shelf = e.type === "pointerup" ? shelfAt(e.clientX, e.clientY) : null;
   const item = items.find((i) => i.id === id);
+  if (item && e.type === "pointerup" && isOverTrash(e.clientX, e.clientY)) {
+    tile.style.visibility = "hidden";
+    throwAway(item, ghost);
+    return;
+  }
+  trash.classList.remove("show", "hot");
+  const shelf = e.type === "pointerup" ? shelfAt(e.clientX, e.clientY) : null;
   if (!shelf || !item) return;
 
   // Продукт прилипає туди, де його відпустили, або на найближче вільне місце.
