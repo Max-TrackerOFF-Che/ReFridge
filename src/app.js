@@ -1,7 +1,8 @@
 import { CATEGORIES, SHELF_LIFE, addDays, daysUntil, freshness, fridgeMood, matchRecipes, sortByExpiry } from "./logic.js";
-import { TILE, findFreeSpot, freeSpot, toFraction, toPixels } from "./placement.js";
+import { findFreeSpot, freeSpot, toFraction, toPixels } from "./placement.js";
 import { guessProduct, productEmoji } from "./products.js";
 import { RECIPES } from "./recipes.js";
+import { TILE_FRACTION, ZONES } from "./scene.js";
 import { loadItems, loadStats, saveItems, saveStats } from "./store.js";
 
 // Під час першого візиту кладемо кілька продуктів-прикладів, щоб було з чим погратися.
@@ -40,6 +41,7 @@ const addDialog = $("#add-dialog");
 const addForm = $("#add-form");
 const itemDialog = $("#item-dialog");
 const recipesDialog = $("#recipes-dialog");
+const scene = $("#scene");
 
 function el(tag, props = {}, ...children) {
   const node = Object.assign(document.createElement(tag), props);
@@ -61,47 +63,43 @@ function commit() {
   render();
 }
 
-/* ---------- Дверцята ---------- */
+/* ---------- Відчинити / зачинити ---------- */
 
-function compartmentFor(category) {
-  return document.querySelector(`.compartment[data-zone="${category === "frozen" ? "freezer" : "main"}"]`);
+const isOpen = () => scene.dataset.state === "open";
+
+function setOpen(open) {
+  scene.dataset.state = open ? "open" : "closed";
+  // Коли холодильник зачинений, продукти недоступні ні мишею, ні з клавіатури.
+  $("#open-ui").inert = !open;
+  $(".closed-ui").inert = open;
+  $("#toggle-button").textContent = open ? "Зачинити" : "Відчинити";
+  updateBackdrop();
 }
 
-function setOpen(compartment, open) {
-  compartment.classList.toggle("open", open);
-  compartment.querySelector(".door").setAttribute("aria-expanded", String(open));
-  // За зачиненими дверцятами продукти недоступні ні мишею, ні з клавіатури.
-  compartment.querySelector(".interior").inert = !open;
-  compartment.querySelector(".door-back").inert = !open;
-}
+$("#door-hit").addEventListener("click", () => setOpen(true));
+$("#toggle-button").addEventListener("click", () => setOpen(!isOpen()));
 
-for (const compartment of document.querySelectorAll(".compartment")) {
-  setOpen(compartment, false);
-  // На вузьких екранах відчинені дверцята виходять за край, тому зачиняємо
-  // їх і кліком по порожньому місцю всередині — наче штовхнули дверцята.
-  compartment.querySelector(".interior").addEventListener("click", (e) => {
-    if (!e.target.closest(".product")) setOpen(compartment, false);
-  });
-}
-
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !document.querySelector("dialog[open]")) {
-    document.querySelectorAll(".compartment").forEach((c) => setOpen(c, false));
-  }
+// Клік по фото поза полицями зачиняє холодильник — наче штовхнули дверцята.
+scene.addEventListener("click", (e) => {
+  if (isOpen() && !e.target.closest(".shelf, .closed-ui")) setOpen(false);
 });
 
-for (const door of document.querySelectorAll(".door")) {
-  const compartment = door.closest(".compartment");
-  const toggle = () => setOpen(compartment, !compartment.classList.contains("open"));
-  door.addEventListener("click", (e) => {
-    if (!e.target.closest(".product")) toggle();
-  });
-  door.addEventListener("keydown", (e) => {
-    if (e.target === door && (e.key === "Enter" || e.key === " ")) {
-      e.preventDefault();
-      toggle();
-    }
-  });
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !document.querySelector("dialog[open]")) setOpen(false);
+});
+
+/** Розставляє полиці поверх фото відчиненого холодильника для поточного настрою. */
+function layoutShelves() {
+  const zones = ZONES[scene.dataset.mood] ?? ZONES.neutral;
+  for (const shelf of shelves) {
+    const [x, y, w, h] = zones[shelf.dataset.shelf];
+    Object.assign(shelf.style, { left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%` });
+  }
+}
+
+function updateBackdrop() {
+  const photo = scene.querySelector(`.photo[data-for="${scene.dataset.state} ${scene.dataset.mood}"]`);
+  if (photo) $("#backdrop").style.backgroundImage = `url("${photo.getAttribute("src")}")`;
 }
 
 /* ---------- Продукти на полицях ---------- */
@@ -134,9 +132,10 @@ function areaOf(shelf) {
   return { w: box.clientWidth, h: box.clientHeight };
 }
 
-// На дверцятах продукти повернуті до глядача, тож їм потрібно більше місця вздовж полиці.
-function tileOf(shelf) {
-  return shelf.classList.contains("balcony") ? { w: 100, h: TILE.h } : TILE;
+// Розмір значка залежить від ширини сцени (див. --tw / --th у styles.css).
+function tileOf() {
+  const w = scene.clientWidth * TILE_FRACTION;
+  return { w, h: w * (7 / 7.4) };
 }
 
 /** Позиції (px) усіх розміщених продуктів на полиці, крім `exceptId`. */
@@ -204,7 +203,7 @@ let drag = null;
 let suppressClick = false;
 
 function shelfAt(x, y) {
-  return document.elementFromPoint(x, y)?.closest(".compartment.open .shelf") ?? null;
+  return document.elementFromPoint(x, y)?.closest(".scene[data-state=\"open\"] .shelf") ?? null;
 }
 
 function highlight(shelf) {
@@ -224,6 +223,8 @@ document.addEventListener("pointermove", (e) => {
     if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 6) return;
     drag.ghost = drag.tile.cloneNode(true);
     drag.ghost.classList.add("drag-ghost");
+    Object.assign(drag.ghost.style, { width: `${drag.tile.offsetWidth}px`, height: `${drag.tile.offsetHeight}px` });
+    drag.ghost.style.setProperty("--ghost-emoji", getComputedStyle(drag.tile.querySelector(".emoji")).fontSize);
     drag.ghost.classList.remove("dropping");
     document.body.append(drag.ghost);
     drag.tile.classList.add("dragging");
@@ -357,7 +358,7 @@ addForm.addEventListener("submit", (e) => {
   items.push(item);
   justAdded = item.id;
   addDialog.close();
-  setOpen(compartmentFor(item.category), true);
+  setOpen(true);
   commit();
   justAdded = null;
 });
@@ -391,6 +392,9 @@ for (const dialog of document.querySelectorAll("dialog")) {
 
 function render() {
   const sorted = sortByExpiry(items);
+  // Настрій визначає фото, а від фото залежить, де саме лежать полиці.
+  renderMood();
+  layoutShelves();
 
   // Новим продуктам (і тим, що збереглися зі старої версії) шукаємо вільне місце.
   const unplaced = sorted.filter((i) => !i.pos || !i.shelf || !shelfById(i.shelf));
@@ -425,13 +429,9 @@ function render() {
       ? matches.map(recipeRow)
       : [el("li", { className: "muted", textContent: "Покладіть продукти, щоб побачити рецепти." })]),
   );
-
-  renderMood();
 }
 
 /* ---------- Настрій холодильника ---------- */
-
-const fridge = $("#fridge");
 
 function plural(n, one, few, many) {
   const m10 = n % 10;
@@ -453,54 +453,13 @@ function moodText({ mood, total, expired, soon, nearest }) {
 
 function renderMood() {
   const state = fridgeMood(items);
-  if (fridge.dataset.mood !== state.mood) {
-    fridge.dataset.mood = state.mood;
-    fridge.classList.remove("mood-change");
-    void fridge.offsetWidth; // перезапуск анімації
-    fridge.classList.add("mood-change");
-  }
+  scene.dataset.mood = state.mood;
   $("#mood-bubble").textContent = moodText(state);
+  updateBackdrop();
 }
-fridge.addEventListener("animationend", (e) => {
-  if (e.animationName === "jiggle") fridge.classList.remove("mood-change");
-});
-
-// Очі стежать за курсором чи пальцем.
-document.addEventListener("pointermove", (e) => {
-  for (const iris of document.querySelectorAll(".face .iris")) {
-    const eye = iris.closest(".eye").querySelector(".eyeball").getBoundingClientRect();
-    if (!eye.width) continue;
-    const dx = e.clientX - (eye.left + eye.width / 2);
-    const dy = e.clientY - (eye.top + eye.height / 2);
-    const k = Math.min(1, Math.hypot(dx, dy) / 300) / (Math.hypot(dx, dy) || 1);
-    iris.style.transform = `translate(${(dx * k * 9).toFixed(1)}px, ${(dy * k * 6).toFixed(1)}px)`;
-  }
-});
-
-/* ---------- Годинник ---------- */
-
-for (let n = 1; n <= 12; n++) {
-  const a = (n / 12) * 2 * Math.PI;
-  const span = el("span", { textContent: n });
-  span.style.left = `${50 + 38 * Math.sin(a)}%`;
-  span.style.top = `${50 - 38 * Math.cos(a)}%`;
-  $("#clock-numbers").append(span);
-}
-
-function tick() {
-  const now = new Date();
-  const s = now.getSeconds();
-  const m = now.getMinutes() + s / 60;
-  const h = (now.getHours() % 12) + m / 60;
-  $("#hand-second").style.rotate = `${s * 6}deg`;
-  $("#hand-minute").style.rotate = `${m * 6}deg`;
-  $("#hand-hour").style.rotate = `${h * 30}deg`;
-  $("#clock").setAttribute("aria-label", `Годинник: ${now.toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })}`);
-}
-tick();
-setInterval(tick, 1000);
 
 // Опівночі терміни зсуваються — перемальовуємо раз на хвилину.
 setInterval(render, 60_000);
 
+setOpen(false);
 render();
